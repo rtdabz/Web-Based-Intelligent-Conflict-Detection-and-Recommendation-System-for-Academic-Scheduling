@@ -85,7 +85,7 @@ const mapApiUser = (u: ApiUser): User => ({
   createdAt: u.created_at,
 });
 
-export default function VpaaUsers() {
+export default function DeanUsers() {
   const { toast } = useToast();
   const usersCacheKey = 'page:users';
   const cachedUsersData = getCachedData<UsersPageData>(usersCacheKey);
