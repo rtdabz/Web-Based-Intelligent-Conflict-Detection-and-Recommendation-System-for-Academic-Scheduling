@@ -12,7 +12,7 @@ final class SchedulingPolicy
 {
     public const OPERATING_START_MINUTES = 7 * 60;
     public const SLOT_MINUTES = 30;
-    public const TOTAL_SLOTS = 28;
+    public const TOTAL_SLOTS = 24;
 
     public const DAYS = [
         'Monday',
@@ -71,6 +71,7 @@ final class SchedulingPolicy
         'faculty_assignment',
         'finalized',
         'rejected',
+        'revision',
     ];
 
     /** @var array<string, array{0: string, 1: string}> */
@@ -96,7 +97,7 @@ final class SchedulingPolicy
     /**
      * Applied when an on-site course is scheduled online as a fallback.
      */
-    public const SOFT_ONLINE_FALLBACK_PENALTY = 25;
+    public const SOFT_ONLINE_FALLBACK_PENALTY = 1000;
 
     /**
      * Canonical constraint catalog shared by RuleEngine, CSP, and request validation.
@@ -121,7 +122,7 @@ final class SchedulingPolicy
         'operating_hours' => [
             'severity' => 'hard',
             'category' => 'time',
-            'description' => 'Schedules must be within 7:00 AM and 9:00 PM.',
+            'description' => 'Schedules must be within 7:00 AM and 7:00 PM.',
             'enforced_by' => ['request_validation', 'rule_engine', 'csp'],
         ],
         'slot_grid' => [
@@ -582,7 +583,7 @@ final class SchedulingPolicy
             return true;
         }
 
-        foreach (['PATHFIT', 'NSTP', 'ROTC', 'CWTS'] as $keyword) {
+        foreach (['PATHFIT', 'PATH FIT', 'PATH-FIT', 'NSTP', 'ROTC', 'CWTS', 'PE 1', 'PE 2', 'PE 3', 'PE 4', 'PHYSICAL EDUCATION'] as $keyword) {
             if (str_contains($code, $keyword) || str_contains($name, $keyword)) {
                 return true;
             }

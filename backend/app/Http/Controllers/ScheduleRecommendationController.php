@@ -10,6 +10,7 @@ use App\Models\Curriculum;
 use App\Services\Scheduling\CSPSolver;
 use App\Services\Scheduling\RuleEngine;
 use App\Services\Scheduling\SchedulingPolicy;
+use App\Services\Scheduling\SplitScheduleService;
 use App\Services\SystemNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ class ScheduleRecommendationController extends Controller
     public function __construct(
         private readonly CSPSolver $cspSolver,
         private readonly RuleEngine $ruleEngine,
+        private readonly SplitScheduleService $splitScheduleService,
         private readonly SystemNotificationService $notifications,
     ) {
     }
@@ -42,6 +44,73 @@ class ScheduleRecommendationController extends Controller
         return response()->json($recommendations);
     }
 
+    /**
+     * Find conflict-free placements for a single split-session block.
+     *
+     * POST /api/schedule-recommendations/recommend-split
+     *
+     * The Rule Engine validates every candidate; only conflict-free options
+     * are returned. If no valid placement exists anywhere within operating
+     * hours, status='no_solution' is returned instead of an error.
+     */
+    public function recommendSplit(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'term_id'                => 'required|integer|exists:terms,id',
+            'section_id'             => 'required|integer|exists:sections,id',
+            'course_id'              => 'required|integer|exists:courses,id',
+            'department_id'          => 'required|integer|exists:departments,id',
+            'duration_slots'         => 'required|integer|min:1|max:24',
+            'room_id'                => 'nullable|integer|exists:rooms,id',
+            'mode'                   => SchedulingPolicy::allowedDeliveryModesRule('sometimes'),
+            'faculty_id'             => 'nullable|integer|exists:faculties,id',
+            'delete_ids'             => 'sometimes|array',
+            'delete_ids.*'           => 'integer|exists:schedules,id',
+            'max_solutions'          => 'sometimes|integer|min:1|max:10',
+            'timeout_seconds'        => 'sometimes|numeric|min:0.5|max:15',
+            'meeting_type'           => 'nullable|in:lecture,laboratory',
+            'preferred_day'          => 'nullable|string',
+            'preferred_start_time'   => 'nullable|string',
+        ]);
+
+        try {
+            $result = $this->splitScheduleService->recommend(
+                termId:             (int) $validated['term_id'],
+                sectionId:          (int) $validated['section_id'],
+                courseId:           (int) $validated['course_id'],
+                departmentId:       (int) $validated['department_id'],
+                durationSlots:      (int) $validated['duration_slots'],
+                roomId:             isset($validated['room_id']) ? (int) $validated['room_id'] : null,
+                mode:               $validated['mode'] ?? 'on-site',
+                facultyId:          isset($validated['faculty_id']) ? (int) $validated['faculty_id'] : null,
+                deleteIds:          array_map('intval', $validated['delete_ids'] ?? []),
+                maxResults:         (int) ($validated['max_solutions'] ?? 5),
+                timeoutSeconds:     (float) ($validated['timeout_seconds'] ?? 5.0),
+                meetingType:        $validated['meeting_type'] ?? null,
+                preferredDay:       $validated['preferred_day'] ?? null,
+                preferredStartTime: $validated['preferred_start_time'] ?? null,
+            );
+        } catch (InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        if ($result['status'] === 'no_solution') {
+            return response()->json([
+                'status'  => 'no_solution',
+                'message' => 'No conflict-free time slot found for this split session. '
+                    . 'All available times on all days are occupied. '
+                    . 'Try a different room, delivery mode, or reduce other scheduled sessions.',
+                'recommendations' => [],
+            ]);
+        }
+
+        return response()->json([
+            'status'          => 'ok',
+            'message'         => 'Conflict-free placements found for this split session.',
+            'recommendations' => $result['recommendations'],
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -55,10 +124,21 @@ class ScheduleRecommendationController extends Controller
             'max_solutions' => 'sometimes|integer|min:1|max:25',
             'max_iterations' => 'sometimes|integer|min:1',
             'timeout_seconds' => 'sometimes|numeric|min:0.1',
+            'seed' => 'sometimes|integer',
         ]);
 
         /** @var Sections $section */
         $section = Sections::query()->findOrFail($validated['section_id']);
+
+        // Clear previous generated schedules and cached solutions
+        Schedule::where('section_id', $section->id)
+            ->where('term_id', $section->term_id)
+            ->whereIn('status', ['draft', 'completed'])
+            ->delete();
+
+        ScheduleRecommendation::where('section_id', $section->id)
+            ->where('term_id', $section->term_id)
+            ->delete();
 
         try {
             $validated['course_ids'] = $this->resolveCourseIds($section, $validated['course_ids'] ?? null);
@@ -153,10 +233,21 @@ class ScheduleRecommendationController extends Controller
             'max_solutions' => 'sometimes|integer|min:1|max:5',
             'max_iterations' => 'sometimes|integer|min:1',
             'timeout_seconds' => 'sometimes|numeric|min:0.1|max:5',
+            'seed' => 'sometimes|integer',
         ]);
 
         /** @var Sections $section */
         $section = Sections::query()->findOrFail($validated['section_id']);
+
+        // Clear previous generated schedules and cached solutions
+        Schedule::where('section_id', $section->id)
+            ->where('term_id', $section->term_id)
+            ->whereIn('status', ['draft', 'completed'])
+            ->delete();
+
+        ScheduleRecommendation::where('section_id', $section->id)
+            ->where('term_id', $section->term_id)
+            ->delete();
 
         try {
             $validated['course_ids'] = $this->resolveCourseIds($section, $validated['course_ids'] ?? null);
@@ -191,6 +282,7 @@ class ScheduleRecommendationController extends Controller
             'max_iterations' => 'sometimes|integer|min:1',
             'timeout_seconds' => 'sometimes|numeric|min:0.1|max:5',
             'selected_rank' => 'required|integer|min:1|max:5',
+            'seed' => 'sometimes|integer',
         ]);
 
         /** @var Sections $section */
@@ -465,7 +557,7 @@ class ScheduleRecommendationController extends Controller
                 'section_id'        => (int) ($row['section_id'] ?? $recommendation->section_id),
                 'course_id'         => $courseId,
                 'faculty_id'        => isset($row['faculty_id']) ? (int) $row['faculty_id'] : null,
-                'room_id'           => (int) $row['room_id'],
+                'room_id'           => isset($row['room_id']) && $row['room_id'] !== null ? (int) $row['room_id'] : null,
                 'department_id'     => (int) ($row['department_id'] ?? $recommendation->department_id),
                 'day'               => (string) $row['day'],
                 'start_time'        => SchedulingPolicy::normalizeTime((string) $row['start_time']),
@@ -474,6 +566,9 @@ class ScheduleRecommendationController extends Controller
                 'is_hybrid'         => (bool) ($row['is_hybrid'] ?? false),
                 'preferred_pattern' => $row['preferred_pattern'] ?? null,
                 'status'            => (string) ($row['status'] ?? 'draft'),
+                'split_group_id'    => $row['split_group_id'] ?? null,
+                'meeting_type'      => $row['meeting_type'] ?? null,
+                'meeting_index'     => isset($row['meeting_index']) ? (int) $row['meeting_index'] : null,
             ];
         }, $rows);
 
@@ -558,7 +653,7 @@ class ScheduleRecommendationController extends Controller
         }
 
         throw new InvalidArgumentException(
-            "The active curriculum ({$curriculum->name}) has no courses defined for Year {$section->year_level}, {$section->semester} semester."
+            "Year {$section->year_level} has no courses for {$section->semester} semester. Add courses to this year level before generating a schedule."
         );
     }
 
@@ -594,7 +689,11 @@ class ScheduleRecommendationController extends Controller
                     $violations[] = $this->batchViolation('section_conflict', $leftIndex, $rightIndex);
                 }
 
-                if ($left['room_id'] === $right['room_id']) {
+                if (
+                    $left['room_id'] !== null &&
+                    $right['room_id'] !== null &&
+                    $left['room_id'] === $right['room_id']
+                ) {
                     $violations[] = $this->batchViolation('room_conflict', $leftIndex, $rightIndex);
                 }
 
@@ -656,10 +755,21 @@ class ScheduleRecommendationController extends Controller
             'preferred_patterns.*' => ['nullable', 'string', 'max:20', fn ($attribute, $value, $fail) => SchedulingPolicy::isValidPreferredPattern($value) ? null : $fail('The preferred pattern is not supported.')],
             'max_iterations' => 'sometimes|integer|min:1',
             'timeout_seconds' => 'sometimes|numeric|min:0.1',
+            'seed' => 'sometimes|integer',
         ]);
 
         /** @var Sections $section */
         $section = Sections::query()->findOrFail($validated['section_id']);
+
+        // Clear previous generated schedules and cached solutions
+        Schedule::where('section_id', $section->id)
+            ->where('term_id', $section->term_id)
+            ->whereIn('status', ['draft', 'completed'])
+            ->delete();
+
+        ScheduleRecommendation::where('section_id', $section->id)
+            ->where('term_id', $section->term_id)
+            ->delete();
 
         try {
             $resolvedCourseIds = $this->resolveCourseIds($section, $validated['course_ids'] ?? null);
