@@ -18,16 +18,40 @@ The audit revealed **10 significant findings** ranging from critical data integr
 
 | # | Severity | Affected Module | Short Description |
 |---|----------|-----------------|-------------------|
-| **1** | **Critical** | Database Schema & Models | Missing `split_group_id`, `meeting_type`, and `meeting_index` database columns. |
-| **2** | **Critical** | Backend API (`ScheduleController`) | Missing intra-batch conflict detection in `batch()` and `validateSplits()`. |
-| **3** | **Critical** | CSP Engine (`CSPSolver`) | Discrepancy between course unit calculation vs. Lecture/Laboratory contact hours. |
-| **4** | **High** | Frontend (`GenerateScheduleModal`) | Invalid room assignment (lecture room) for split Laboratory sessions (`-m2`). |
+| **1** | ~~Critical~~ **Fixed** | Database Schema & Models | Missing `split_group_id`, `meeting_type`, and `meeting_index` database columns. |
+| **2** | ~~Critical~~ **Fixed** | Backend API (`ScheduleController`) | Missing intra-batch conflict detection in `batch()` and `validateSplits()`. |
+| **3** | **Critical — open, needs a policy decision** | CSP Engine (`CSPSolver`) | Discrepancy between course unit calculation vs. Lecture/Laboratory contact hours. |
+| **4** | ~~High~~ **Fixed** | Frontend (`GenerateScheduleModal`) | Invalid room assignment (lecture room) for split Laboratory sessions (`-m2`). |
 | **5** | **High** | Backend API (`validateSplits`) | Inflexible single-direction forward slot-shifting during auto-resolution. |
 | **6** | **High** | Rule Engine (`RuleEngine`) | Section online limit overcounts split hybrid sessions as full online courses. |
 | **7** | **Medium** | Timetable Grid & Modals | Unsynchronized manual editing and drag-and-drop of split meetings. |
 | **8** | **Medium** | Backend API & Timetable Grid | Absence of atomic deletion for linked split sessions leading to orphaned rows. |
 | **9** | **Medium** | Timetable Grid & Printing | Missing visual indicators (`[Lec]`, `[Lab]`, `[Split 1/2]`) in timetable & exports. |
 | **10** | **Low** | Frontend State Management | Inconsistent synthetic ID parsing (`-m1`, `-n1`) for temporary split UI cards. |
+
+---
+
+> **Status (August 18, 2026).** Findings **1** and **2** have shipped: the three
+> columns exist (`schedule_splits`, surfaced through `Schedule`'s appended
+> attributes) and `ScheduleController::checkIntraBatchConflicts` runs inside the
+> batch transaction. Finding **4** is fixed — a laboratory course is no longer
+> offered a lecture room anywhere: `LaboratoryScheduleRequirementBuilder` lists
+> only `['laboratory']` for a laboratory component, `CSPSolver` no longer builds
+> lecture-room candidates for one, and `GenerateScheduleModal` reads the course's
+> real `room_type_required` instead of assuming `"lecture"`. Finding **7** is
+> partly addressed by finding #6 of `schedule_builder_audit_report.md` (the
+> placement modal is now keyed on its editing session rather than on `schedules`).
+>
+> **Finding 3 remains open, and deliberately so.** The client no longer *conflates*
+> the two conventions — `wicars-ui/src/pages/ClassSchedules/SchedulerPanel/courseSlotPlan.ts`
+> names them separately and mirrors the server exactly: a single block is
+> `units * 2` slots, a lecture/laboratory split is `lectureHours * 2` plus
+> `labHours * 6`. But whether an *unsplit* laboratory course should occupy
+> `units * 2` (today, 3 hours for a 3-unit course) or the CHED contact total
+> (5 hours) is an institutional policy question, not a bug to be fixed in code:
+> moving every unsplit laboratory course from 3 to 5 hours would change room
+> capacity requirements across every department. This needs a decision from the
+> scheduling owners, like finding #40 of the schedule-builder audit.
 
 ---
 
