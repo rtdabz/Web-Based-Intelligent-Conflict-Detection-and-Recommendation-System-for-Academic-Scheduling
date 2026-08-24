@@ -1,0 +1,16 @@
+# Local/runtime artifacts
+mysql_data_backup_*/
+*.ibd
+*.frm
+*.MAD
+*.MAI
+*.BAK
+*.err
+*.sql
+
+# Tooling output
+node_modules/
+vendor/
+wicars-ui/dist/
+wicars-ui/eslint-report.json
+tmp/

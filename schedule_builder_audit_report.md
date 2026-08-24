@@ -863,7 +863,7 @@ DB::table('field_course_settings')->updateOrInsert(
 
 `SchedulingPolicy.php:18-33, 449-454, 801-813`
 
-`$cachedOpeningTime`, `$cachedClosingTime`, `$cachedStartSlotsByDuration`, `$cachedFieldCourseSettingEnabled`, `$cachedFieldCourseCodeMap`, `$cachedCourseTeachingAssignmentMap`, and `$cachedCourseCategoryMap` are `private static` properties, and the four `clear*Cache()` methods just null them. There is no shared cache store — `grep -n "Cache::" SchedulingPolicy.php` returns nothing.
+`$cachedOpeningTime`, `$cachedClosingTime`, `$cachedStartSlotsByDuration`, `$cachedFieldCourseSettingEnabled`, `$cachedFieldCourseCodeMap`, and `$cachedCourseCategoryMap` are `private static` properties, and the three `clear*Cache()` methods just null them. There is no shared cache store — `grep -n "Cache::" SchedulingPolicy.php` returns nothing.
 
 **This is correct today.** `composer.json` has no Octane or Swoole, so under php-fpm PHP re-initializes class statics on every request and the caches are per-request by construction. Recording it because it is a latent constraint: adopting Octane (or any persistent worker) would make `clearTimeCache()` and `clearFieldCourseCache()` affect only the worker that handled the write, leaving other workers serving stale operating hours and stale field-course configuration until recycled. Worth a comment on the properties so the assumption is explicit.
 
