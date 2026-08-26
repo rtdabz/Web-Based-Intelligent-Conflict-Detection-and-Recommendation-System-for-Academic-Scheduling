@@ -18,6 +18,39 @@ Keep changes focused on the user's request. Do not rewrite unrelated files, intr
 - Reread a file only when it has changed, the task scope has changed, a dependency contract is uncertain, or verification requires the latest contents.
 - Treat tool output and previous inspection results as working context unless new evidence makes them stale.
 - When a file is large, read the relevant sections first and expand only when necessary.
+## Project Documentation
+
+The `docs/` directory is the project's source of truth for stable architecture,
+business rules, technical decisions, workflows, and project-specific conventions.
+
+Start documentation discovery from:
+
+`docs/DASHBOARD.md`
+
+Use the Dashboard to identify the relevant documentation area, then read only
+the documentation directly related to the current task.
+
+Relevant documentation includes:
+
+- `docs/architecture/` — system architecture, boundaries, services, and ownership.
+- `docs/business_rules/` — scheduling and domain rules that must be preserved.
+- `docs/coding_standards/` — project-specific implementation conventions.
+- `docs/database/` — database schema, relationships, and persistence rules.
+- `docs/decisions/` — established architectural and implementation decisions.
+- `docs/performance/` — performance, queue, caching, and production requirements.
+- `docs/schedule_history_workflow/` — schedule history behavior and workflow.
+- `docs/vpaa_activity_log_workflow/` — VPAA activity-log behavior and workflow.
+
+Do not treat documentation as a reason to read the entire `docs/` directory.
+Follow targeted reading based on the current task.
+
+If documentation conflicts with the existing implementation, do not silently
+choose one. Investigate the relevant code and document the discrepancy before
+making a behavioral change.
+
+When a task introduces or changes a stable architecture decision, business rule,
+workflow, or project convention, update the appropriate documentation after
+the implementation has been verified.
 
 ## Existing Functionality
 
