@@ -42,3 +42,28 @@ teaching it for someone else. Three consequences:
 The same scope drives the Auto-Assign Instructor wizard — see
 `InitialDataController` — and the two must agree. A course the wizard will not
 offer a department is not a course that department should be delegating.
+
+## Minor course split sessions
+
+The department setting named **Minor Course Split Sessions** is a master switch.
+When enabled, schedule generation may split only the minor courses explicitly
+selected for each section into two shorter MW or TTh meetings. The selection is
+made in the schedule generation modal; course codes such as GEC, GEE, PE, or
+other minor labels do not determine eligibility. Major lecture/laboratory
+splitting remains a separate configuration and workflow.
+
+## Generate Schedule fallback priority
+
+After existing schedules and other hard conflicts prune a course's candidates,
+Regular course generation searches the remaining candidates in this order:
+
+1. Monday-Friday candidates using compatible real rooms.
+2. Saturday candidates using compatible real rooms.
+3. Sunday candidates only when the existing course/session configuration permits them.
+4. Room TBA candidates in the same weekday, Saturday, then Sunday order.
+
+Every candidate in a tier is checked before the next tier is opened. Soft room
+compactness, day balancing, and timetable quality scores may rank candidates
+inside a tier, but cannot move Saturday or Room TBA ahead of a complete feasible
+weekday solution. Explicit Schedule Setup rules remain authoritative, so a
+forced Saturday course stays on Saturday.

@@ -39,6 +39,11 @@ authority to edit or delete the owning department's timetable. Existing-row
 updates must hydrate identity from the database and ignore client attempts to
 change ownership for authorization purposes.
 
+Curriculum records and their course placements are institution-level academic
+records owned by the VPAA. The Secretary, Dean, and Program Head portals may
+read and print curriculum data, but all curriculum mutations are restricted by
+the API role middleware to `vpaa`.
+
 ## Refactoring boundary
 
 Controllers should remain thin adapters. New scheduling behavior belongs in a
