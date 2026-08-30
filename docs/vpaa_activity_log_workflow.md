@@ -41,7 +41,7 @@ An event is recorded only after the related operation succeeds. The write should
 | Event area | Events to expose | Actor and target |
 | --- | --- | --- |
 | Authentication | `login_succeeded`, `logout`, `password_reset`, `google_linked`, `google_unlinked` | Actor user; optionally the subject user, IP address, and user agent |
-| User management | `user_created`, `user_updated`, `user_deleted` | VPAA actor; managed account as subject |
+| User management | `user_created`, `user_updated`, `user_archived` | VPAA actor; managed account as subject |
 | Schedule recommendations | `recommendation_generated`, `recommendation_selected`, `recommendation_reviewed`, `recommendation_accepted`, `recommendation_rejected`, `recommendation_auto_applied` | Scheduling actor; recommendation, term, section, and department |
 | Schedule workflow | `schedule_submitted`, `schedule_approved_by_dean`, `schedule_returned_by_dean`, `schedule_approved_by_vpaa`, `schedule_returned_by_vpaa`, `schedule_withdrawn` | Actor; department, term, affected sections, count, and rejection reason where applicable |
 | Faculty assignment | `instructor_assigned`, `instructor_assignment_released` | Actor; schedule/section/course, previous and new faculty IDs, and reason |

@@ -67,6 +67,7 @@ This covers the main scheduling relationships. Audit, notification, authenticati
 - Optional `cluster` supports grouping within a department.
 - Department deletion cascades to programs.
 - References from users, faculty, curriculum, and courses are nullable and normally use `nullOnDelete()`.
+- Uses soft deletes for user-facing archive operations.
 
 ### `users`
 
@@ -74,6 +75,7 @@ This covers the main scheduling relationships. Audit, notification, authenticati
 - Stores role, active status, Google-login fields, department scope, and optional program scope.
 - May link one-to-one to a faculty profile through `faculties.user_id`.
 - Authentication authorization is not defined by foreign keys alone; route middleware and application policies remain authoritative.
+- Uses soft deletes. Archiving revokes access tokens but preserves the linked faculty profile and audit references.
 
 ### `faculties`
 
@@ -81,6 +83,7 @@ This covers the main scheduling relationships. Audit, notification, authenticati
 - May belong to a program and may link to one user account.
 - Stores employment type, load limits and adjustments, administrative role, status, and profile image path.
 - Has many `faculty_availabilities` rows.
+- Uses soft deletes so archived instructors and their schedule foreign keys can be restored.
 
 ### `faculty_availabilities`
 
@@ -96,6 +99,7 @@ This covers the main scheduling relationships. Audit, notification, authenticati
 - `program_id` scopes an owned major course; `teaching_program_id` may further scope delegated teaching.
 - Course codes are unique per owning department through the composite `course_code + department_id` constraint, not globally unique.
 - Curriculum placement is authoritative for year level and semester in a particular curriculum; do not assume course defaults describe every placement.
+- Uses soft deletes for user-facing archive operations.
 
 See [[business_rules]] for course ownership and teaching-assignment rules.
 
@@ -126,17 +130,20 @@ See [[business_rules]] for course ownership and teaching-assignment rules.
 
 - Stores academic year, semester, active state, and enabled state.
 - The schema does not enforce only one active term. Use the existing term activation workflow.
+- Uses soft deletes; the active term still cannot be archived.
 
 ### `sections`
 
 - Belongs to a department and term; both foreign keys cascade on delete.
 - Stores section name, year level, semester, and active/inactive status.
+- Uses soft deletes for user-facing archive operations.
 
 ### `rooms`
 
 - Globally unique `room_code` with building, room type, availability status, and optional department ownership.
 - Department deletion sets `department_id` to null.
 - Later migrations add concurrency and lecture-capability fields.
+- Uses soft deletes so schedules are retained when a room is archived.
 
 ## Scheduling Tables
 
@@ -146,12 +153,32 @@ See [[business_rules]] for course ownership and teaching-assignment rules.
 - Belongs to term, section, course, and owning department.
 - Faculty is nullable and becomes null when the faculty record is deleted.
 - Room is nullable for supported online/TBA workflows, but an existing room deletion cascades to schedules that reference it.
-- Stores day, start/end time, mode, hybrid state, preferred pattern, faculty-assignment completion, approval state, reviewer identifiers, timestamps, and override data.
+- Stores day, start/end time, mode, hybrid state, preferred pattern, faculty-assignment completion, and the operational workflow status used to lock or unlock timetable editing.
 - Current MySQL status values include `conditionally_approved` in addition to the original workflow statuses.
+- `schedules.status` is an operational mirror, not the authoritative approval record. Reviewer identities, review timestamps, rejection reasons, overrides, withdrawal state, and revision lineage belong to `schedule_submissions`.
 - Conflict freedom, time ordering, room suitability, teaching eligibility, and most approval transitions are application invariants, not database constraints.
-- The `Schedule` model records create, update, and delete snapshots in `schedule_histories` through Eloquent events.
+- Uses soft deletes. The `Schedule` model records create, update, archive, restore, and permanent-delete snapshots in `schedule_histories` through Eloquent events.
 
 Do not use bulk query-builder writes for schedules unless intentionally handling the history behavior that Eloquent events would otherwise provide. See [[schedule_history_workflow]].
+
+### `schedule_submissions`
+
+- One row represents one department-and-term submission or revision cycle.
+- Stores the authoritative workflow status, revision number, parent revision, submitter, Dean and VPAA reviewers, review timestamps, withdrawal actor/time, rejection reason, and Room TBA override decision.
+- The unique `(department_id, term_id, revision_number)` key prevents two cycles from claiming the same revision number.
+- Approval queues must filter this table directly. They must not infer submission state from a mixture of timetable rows and notifications.
+
+### `schedule_submission_sections`
+
+- Links a submission cycle to the exact sections included in that cycle.
+- `state = included` identifies the active cohort; `state = withdrawn` records sections removed for revision while other finalized or approved cohorts remain intact.
+- The unique `(schedule_submission_id, section_id)` key prevents duplicate cohort membership.
+- Mixed-state resubmissions create a new `schedule_submissions` row containing only revised sections. Finalized sections remain attached to their earlier cycle and never re-enter approval.
+
+### `scheduling_audit_logs`
+
+- Remains the immutable event trail for submission, approval, rejection, withdrawal, and related operational actions.
+- `schedule_submission_id` links each workflow event to its normalized submission cycle; this avoids creating a second redundant approval-event table.
 
 ### `schedule_splits`
 
@@ -159,6 +186,7 @@ Do not use bulk query-builder writes for schedules unless intentionally handling
 - `schedule_id` is unique and cascades on schedule deletion.
 - Stores a nullable indexed split-group UUID, meeting type, and meeting index.
 - Split attributes are exposed through `Schedule` accessors; callers should not assume they are physical columns on `schedules`.
+- Uses soft deletes when removed through its user-facing endpoint.
 
 ### `schedule_recommendations`
 
@@ -221,6 +249,10 @@ Laravel and installed packages also create supporting tables for personal access
 
 ## Delete Behavior Principles
 
+- User-facing deletion of users, departments, programs, rooms, faculty, courses, terms, sections, schedules, schedule splits, and timeslot overrides is an archive operation implemented with Eloquent soft deletes.
+- Curricula retain their established business `status = archived` workflow and restore UI rather than using `deleted_at`.
+- The VPAA Archive API and page list soft-deleted domain records and restore them. No ordinary application route permanently deletes archived domain records.
+- Token revocation, Google unlinking, caches, sessions, and replacement/synchronization writes remain immediate deletes because they are security or transient implementation data, not archived domain records.
 - Use cascade when a row has no meaning without its parent, such as curriculum placements, faculty availability, schedule split details, or a department's sections.
 - Use `nullOnDelete()` when the record should survive but the related entity may be removed, such as audit actors, reviewers, faculty assignment, or shared ownership.
 - `schedule_histories.schedule_id` deliberately has no foreign key so deleted schedules remain traceable.
@@ -309,4 +341,12 @@ Do not correct these exceptions through isolated renames. Any normalization must
 - `backend/routes/api.php`
 - `backend/tests/Feature/`
 
-Last verified against the repository on 2026-08-25.
+Last verified against the repository on 2026-08-30.
+
+## Migration and History Cleanup Status
+
+- `schedule_history_versions` and `schedule_history_items` are now the preferred history read/write structures.
+- The legacy `schedule_histories` table remains as a compatibility source for older clients and tests; it must not be dropped until those consumers are migrated.
+- Legacy audit rows that cannot be matched to exactly one history version are marked `legacy_history` in activity-log responses rather than being guessed.
+- Asynchronous generation previews are intentionally transient; `schedule_generation_runs.result` is the durable preview artifact. Recommendations are persisted when selected or applied.
+- Data-destructive migrations and cleanup migrations require a backup and should be treated as forward-only in production.

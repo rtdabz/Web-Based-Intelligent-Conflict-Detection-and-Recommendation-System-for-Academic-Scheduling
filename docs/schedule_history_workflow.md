@@ -13,7 +13,7 @@ flowchart TD
     A[User opens Schedule Builder or Approval page] --> B[Load current schedules for department and term]
     B --> C{Requested action}
 
-    C -->|Create, edit, delete, batch replace| D[Validate authentication, role, and department scope]
+    C -->|Create, edit, archive, batch replace| D[Validate authentication, role, and department scope]
     C -->|Submit, approve, return, withdraw, finalize| D
     C -->|View history| V1[Request schedule-history versions]
 
@@ -117,11 +117,22 @@ erDiagram
 - Do not store passwords, tokens, request headers, or other secrets in history metadata.
 - Notifications and cache invalidation should occur only after the transaction commits.
 
+## Mixed Finalized And Revision Cohorts
+
+- Withdrawal is section-scoped. Only the selected sections may move from an approval stage to `revision`.
+- Finalized and unselected approved sections retain their operational status and faculty assignments; their reviewer and approval data remain intact on the earlier `schedule_submissions` cycle.
+- After revision, submission includes all sections currently in a ready status (`completed`, `rejected`, or `rejected_by_dean`) and excludes sections already protected by submission, approval, faculty-assignment, or finalized states.
+- The initial department submission remains all-or-nothing. A partial cohort is allowed only when other sections already belong to a protected approval or finalized cohort.
+- Dean and VPAA decisions update only rows at their respective pending stage, so an earlier finalized cohort never re-enters approval.
+- Each resubmission creates a new `schedule_submissions` revision linked to its parent and attaches only the revised cohort through `schedule_submission_sections`.
+- Dean and VPAA queues filter normalized submission status and section membership rather than reconstructing state from timetable rows or notifications.
+- Workflow audit and history metadata must include `selected_section_ids` and link to `schedule_submission_id` for partial withdrawal and resubmission actions.
+
 ## Suggested Actions
 
 - `schedule_created`
 - `schedule_updated`
-- `schedule_deleted`
+- `schedule_archived`
 - `schedule_batch_saved`
 - `schedule_recommendation_applied`
 - `schedule_submitted`
@@ -134,6 +145,7 @@ erDiagram
 - `instructor_assignment_released`
 - `schedule_finalized`
 - `schedule_restored_as_draft`
+- `schedule_restored`
 
 These names should reuse the existing audit action names wherever they already exist.
 
@@ -151,4 +163,3 @@ POST /api/schedule-history/{version}/restore
 ```
 
 The restore endpoint is optional for the first release. The minimum viable implementation is immutable capture, a paginated timeline, snapshot viewing, and version comparison.
-
