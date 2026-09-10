@@ -42,3 +42,21 @@ VPAA can review and restore them through the system Archive. Curricula continue
 to use their established `archived` status because that status is part of the
 curriculum workflow. Security-sensitive token revocation and transient
 replacement data are excluded from archival and remain immediate deletions.
+
+## Task-based interactive guides on the existing tour library
+
+Onboarding stays on react-joyride (`useWorkflowGuide`, `joyrideTour`,
+`WorkflowGuideButton`); no second tour library is introduced. Guides are
+page-scoped and always start/restart from the existing per-page Help (?)
+button — there is no global mission overlay or extra entry button.
+`src/onboarding/taskGuide.ts` defines `TourAction` (`click`, `select`,
+`input`, `submit`, `toggle`, `navigate`, `complete`), per-action validation,
+and `waitForElement` (MutationObserver, never fixed sleeps). Each page
+declares its steps with the actions the user must perform; action steps hide
+the Next button until the real action is detected, then auto-advance.
+Completion is persisted per user per guide (v3 key), and destructive moves
+(save, submit, approve) are review-only `complete` steps so a tour can never
+force a mutation. Action steps spotlight the exact control (the button, not
+the card) via precise selectors and zero-visual-change `data-tour` hooks;
+the tooltip tracks moving targets with Floating UI autoUpdate while the
+spotlight follows scroll, resize, and target mutations.

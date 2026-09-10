@@ -52,10 +52,35 @@ made in the schedule generation modal; course codes such as GEC, GEE, PE, or
 other minor labels do not determine eligibility. Major lecture/laboratory
 splitting remains a separate configuration and workflow.
 
+When a selected minor split has no complete valid two-meeting placement after
+room, time, persisted-schedule, delivery-mode, and capacity constraints are
+applied, generation may use a single full-duration meeting for that course.
+Split candidates are always searched and ranked first; the single meeting is a
+lower-priority, explicitly marked fallback and is used only when it enables a
+complete timetable. A successful fallback is reported with the course, section,
+and reason so it is distinguishable from a user disabling Split Sessions.
+The Minor/GEC split search must retain every valid start-time pair in the
+configured split-day patterns. Search ranking may try nearby pairs first, but
+candidate truncation must not make Online or a single meeting appear necessary
+while a later physical pair remains valid.
+
+Minor-course fallback order is lexicographic:
+
+1. An unconfigured Minor course searches every valid physical single-meeting
+   placement before any Online candidate is opened.
+2. A configured Minor course searches every valid physical Split Session
+   placement first, then every valid physical single-meeting placement.
+3. Online is opened only after the applicable physical split and physical
+   single-meeting tiers cannot produce a complete timetable.
+
+Room compatibility, section conflicts, persisted and tentative schedules,
+capacity, forced-day settings, and delivery-mode constraints remain hard rules
+inside every tier.
+
 ## Generate Schedule fallback priority
 
 After existing schedules and other hard conflicts prune a course's candidates,
-Regular course generation searches the remaining candidates in this order:
+regular physical course generation searches the remaining candidates in this order:
 
 1. Monday-Friday candidates using compatible real rooms.
 2. Saturday candidates using compatible real rooms.
@@ -67,3 +92,18 @@ compactness, day balancing, and timetable quality scores may rank candidates
 inside a tier, but cannot move Saturday or Room TBA ahead of a complete feasible
 weekday solution. Explicit Schedule Setup rules remain authoritative, so a
 forced Saturday course stays on Saturday.
+
+Online lecture candidates use the same Monday-Saturday search tier. Saturday is
+considered while online lecture candidates are explored instead of being withheld
+until all weekday online candidates fail. This also applies to the online lecture
+block inside a hybrid lecture/laboratory candidate; laboratory-only and
+physical-only candidates retain the weekday-first order above.
+
+For a course with both lecture and laboratory hours, the lecture component is
+not implicitly Hybrid. When Hybrid is not explicitly selected, compatible
+lecture rooms are generated first and the online lecture component is retained
+only as a lower-priority fallback after those rooms are unavailable. An
+explicit Hybrid selection preserves the online lecture plus physical laboratory
+configuration. All online candidates remain subject to the department's
+concurrent online-meeting limit, including assignments already chosen earlier
+in the same year-level generation.

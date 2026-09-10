@@ -14,6 +14,16 @@
 ## Architecture & Decisions
 
 - [[decisions]]
+- [[scheduling_core_phase_0]]
+- [[scheduling_core_phase_1]]
+- [[scheduling_core_phase_2]]
+- [[scheduling_core_phase_3]]
+- [[scheduling_core_phase_4]]
+- [[scheduling_core_phase_5]]
+- [[scheduling_core_phase_6]]
+- [[scheduling_core_phase_7]]
+- [[scheduling_core_phase_8]]
+- [[scheduling_core_phase_9]]
 
 ## Workflows
 

@@ -85,10 +85,6 @@ erDiagram
         bigint id PK
         bigint history_version_id FK
         bigint original_schedule_id
-        bigint section_id
-        bigint course_id
-        bigint faculty_id
-        bigint room_id
         string day
         time start_time
         time end_time
@@ -104,9 +100,13 @@ erDiagram
     }
 ```
 
-`original_schedule_id` should not be a cascading foreign key because the live schedule may later be deleted. Other IDs may be stored as nullable references plus immutable display values in `snapshot_metadata`, allowing old history to remain understandable after related records are renamed or removed.
+`original_schedule_id` is provenance only and should not be a foreign key because the live schedule may later be deleted. Section, course, faculty, and room IDs remain inside the immutable schedule snapshot; display labels remain in `snapshot_metadata` so history does not depend on live relationships.
 
 ## Capture Rules
+
+- Activating a different term is an atomic transition. The system locks the old and new terms, archives the previous term's VPAA-approved schedules as one complete `schedule_term_archived` snapshot, soft-deletes the previous term's live schedule rows, resets old live schedules and sections attached to both term records, and activates the new term. This gives every newly activated term an empty section workspace and prevents either side of the transition from retaining stale sections, while preserving the ended term's schedules through immutable schedule-history snapshots. VPAA approval is represented by `approved` and its operational descendants `faculty_assignment`, `reassignment`, and `finalized`; Dean-approved, pending, draft, rejected, and revision rows are excluded. The archive is linked to the actor and the previous term, and the transition is recorded in the scheduling audit log.
+- Term archives copy the schedule attributes and display labels for sections, courses, faculty, and rooms into the history item. Historical timetable rendering therefore remains stable after live schedules or related records change.
+- The history viewer's Print Schedule action mounts the Schedule Builder's existing print component with the immutable snapshot data, preserving the builder's formatting and A4 landscape PDF output.
 
 - Capture history only after authorization and validation pass.
 - Keep the live schedule change, history version, history items, and existing audit event in the same database transaction.
@@ -119,12 +119,15 @@ erDiagram
 
 ## Mixed Finalized And Revision Cohorts
 
-- Withdrawal is section-scoped. Only the selected sections may move from an approval stage to `revision`.
-- Finalized and unselected approved sections retain their operational status and faculty assignments; their reviewer and approval data remain intact on the earlier `schedule_submissions` cycle.
+- Withdrawal is section-scoped. Only the selected sections may move from an approval stage to `revision`; their persisted `faculty_id` values remain unchanged unless an explicit assignment action later changes or removes them.
+- Year-level schedule generation is eligible when the year level has no schedules, while all existing rows remain in the ordinary plotting statuses (`draft` or `completed`), or when every active section in that year level has been withdrawn and all of its schedule rows are in `revision`. Once any row enters `revision`, mixed plotting and revision rows are treated as a partial withdrawal and must not unlock generation. Submitted, approved, faculty-assignment, reassignment, and finalized sections remain blocked.
+- Finalized and unselected approved sections retain their operational status and faculty assignments; their reviewer and approval data remain intact on the earlier `schedule_submissions` cycle. An authorized department schedule user may move a finalized section into the persisted `reassignment` status to change instructor assignments without changing the timetable placement. The section remains in `reassignment` across reloads and returns to `finalized` only after every schedule row has an instructor and finalization validation succeeds; the transition is ownership-scoped and recorded through the existing schedule history and audit log.
+- A section in `reassignment` becomes withdrawal-eligible when its current schedule rows have no assigned instructors and `faculty_assignment_done` is false. Eligibility must use those current row values rather than treating the persisted reassignment label as proof of an active assignment. Reassignment sections with any instructor or a completed assignment handoff remain protected.
 - After revision, submission includes all sections currently in a ready status (`completed`, `rejected`, or `rejected_by_dean`) and excludes sections already protected by submission, approval, faculty-assignment, or finalized states.
 - The initial department submission remains all-or-nothing. A partial cohort is allowed only when other sections already belong to a protected approval or finalized cohort.
 - Dean and VPAA decisions update only rows at their respective pending stage, so an earlier finalized cohort never re-enters approval.
 - Each resubmission creates a new `schedule_submissions` revision linked to its parent and attaches only the revised cohort through `schedule_submission_sections`.
+- A bulk withdrawal may span sections whose current approval state belongs to different submission revisions. Resolve each selected section to its latest `included` submission membership and update every affected submission cycle in the same transaction; do not attach the entire action only to the newest matching revision.
 - Dean and VPAA queues filter normalized submission status and section membership rather than reconstructing state from timetable rows or notifications.
 - Workflow audit and history metadata must include `selected_section_ids` and link to `schedule_submission_id` for partial withdrawal and resubmission actions.
 

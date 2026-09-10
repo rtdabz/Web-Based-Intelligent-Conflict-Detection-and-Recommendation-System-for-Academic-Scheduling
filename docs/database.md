@@ -38,6 +38,7 @@ erDiagram
     CURRICULUM ||--o{ CURRICULUM_COURSE : contains
     COURSES ||--o{ CURRICULUM_COURSE : placed_in
     TERMS ||--o{ SECTIONS : groups
+    PROGRAMS ||--o{ SECTIONS : groups
     TERMS ||--o{ SCHEDULES : scopes
     SECTIONS ||--o{ SCHEDULES : receives
     COURSES ||--o{ SCHEDULES : scheduled_as
@@ -73,6 +74,7 @@ This covers the main scheduling relationships. Audit, notification, authenticati
 
 - Application accounts with unique usernames and optional unique email addresses.
 - Stores role, active status, Google-login fields, department scope, and optional program scope.
+- Google login is enabled automatically for all accounts; the legacy `allow_google_login` column is retained for API and schema compatibility.
 - May link one-to-one to a faculty profile through `faculties.user_id`.
 - Authentication authorization is not defined by foreign keys alone; route middleware and application policies remain authoritative.
 - Uses soft deletes. Archiving revokes access tokens but preserves the linked faculty profile and audit references.
@@ -134,7 +136,9 @@ See [[business_rules]] for course ownership and teaching-assignment rules.
 
 ### `sections`
 
-- Belongs to a department and term; both foreign keys cascade on delete.
+- Belongs to a department, program, and term. `program_id` is nullable only for
+  legacy rows during migration; new sections must belong to a program owned by
+  the same department.
 - Stores section name, year level, semester, and active/inactive status.
 - Uses soft deletes for user-facing archive operations.
 
@@ -150,7 +154,9 @@ See [[business_rules]] for course ownership and teaching-assignment rules.
 ### `schedules`
 
 - Central persisted timetable row.
-- Belongs to term, section, course, and owning department.
+- Belongs to term, section, course, owning department, and (for new rows) the
+  selected program. Department remains the approval/authorization boundary;
+  program is the academic scheduling scope and must match the section.
 - Faculty is nullable and becomes null when the faculty record is deleted.
 - Room is nullable for supported online/TBA workflows, but an existing room deletion cascades to schedules that reference it.
 - Stores day, start/end time, mode, hybrid state, preferred pattern, faculty-assignment completion, and the operational workflow status used to lock or unlock timetable editing.
@@ -192,6 +198,10 @@ Do not use bulk query-builder writes for schedules unless intentionally handling
 
 - Stores ranked generated recommendations for a term, section, and department.
 - Keeps JSON input and recommended schedule payloads.
+- New section recommendations preserve legacy input fields and add a versioned
+  `_scheduling` envelope containing the normalized generation configuration,
+  configuration fingerprint, source snapshot fingerprint, and confirmed warning
+  rule IDs. Legacy rows without the envelope remain valid and readable.
 - Tracks pending, accepted, and rejected state plus requesting and reviewing users.
 - Core scope rows cascade; user references become null to preserve the record.
 
@@ -200,6 +210,9 @@ Do not use bulk query-builder writes for schedules unless intentionally handling
 - Tracks asynchronous generation requests by unique `run_id`.
 - Scoped by requester, term, department, and year level.
 - Stores status, JSON result, error message, and execution timestamps.
+- Successful previews and structured scheduling failures store the Phase 9
+  `generation_metrics` envelope inside the existing JSON result; no schema
+  migration is required.
 - Indexed for status and department/term/year-level history queries.
 
 ### Scheduling Configuration
@@ -212,13 +225,14 @@ Do not use bulk query-builder writes for schedules unless intentionally handling
 
 ## History, Audit, And Notifications
 
-### `schedule_histories`
+### `schedule_history_versions` and `schedule_history_items`
 
-- Append-oriented snapshots of schedule changes.
-- Keeps numeric `schedule_id` without a foreign key so deletion history survives.
-- Related term, section, course, department, and actor references are nullable and use `nullOnDelete()`.
-- Indexed for department/term chronology and schedule lookup.
-- `snapshot` is required JSON; `changes` is optional JSON.
+- `schedule_history_versions` stores the archived term, immutable academic-year and semester labels, department scope, actor, action, source, and summary.
+- Term changes create one version for the complete VPAA-approved schedule of each department in the previous term.
+- `schedule_history_items` stores one immutable schedule snapshot per archived schedule row.
+- `original_schedule_id` is provenance only and has no foreign key; section, course, faculty, room, time, day, delivery mode, and other schedule values are preserved in JSON snapshots.
+- `snapshot_metadata` stores historical display labels so rendering does not depend on current section, course, faculty, room, or department records.
+- Existing history data is cleared by the forward-only cleanup migration before the new whole-department term archives are used.
 
 ### `scheduling_audit_logs`
 
@@ -345,8 +359,10 @@ Last verified against the repository on 2026-08-30.
 
 ## Migration and History Cleanup Status
 
-- `schedule_history_versions` and `schedule_history_items` are now the preferred history read/write structures.
-- The legacy `schedule_histories` table remains as a compatibility source for older clients and tests; it must not be dropped until those consumers are migrated.
+- `schedule_history_versions` and `schedule_history_items` are the only history read/write structures.
+- The legacy `schedule_histories` table is migrated into the version/item structure and dropped by the retirement migration; new history writes use only `schedule_history_versions` and `schedule_history_items`.
+- `schedule_history_items.original_schedule_id` is the only relational schedule identifier. Section, course, faculty, and room identifiers are retained inside the immutable JSON snapshot, while their historical display labels are stored in `snapshot_metadata`.
 - Legacy audit rows that cannot be matched to exactly one history version are marked `legacy_history` in activity-log responses rather than being guessed.
 - Asynchronous generation previews are intentionally transient; `schedule_generation_runs.result` is the durable preview artifact. Recommendations are persisted when selected or applied.
+- Schedule term archives include only `approved`, `faculty_assignment`, `reassignment`, and `finalized` schedule rows.
 - Data-destructive migrations and cleanup migrations require a backup and should be treated as forward-only in production.
