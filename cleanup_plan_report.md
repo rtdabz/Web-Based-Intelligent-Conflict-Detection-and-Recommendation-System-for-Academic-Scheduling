@@ -27,7 +27,7 @@ The asset candidates should be removed as one small batch so the resulting asset
 
 ## 2. May be unused; verification required
 
-- `backend/app/Services/Scheduling/GenerateScheduleService.php` — no current PHP runtime import, route, job, or test reference was found. However, it is named in `docs/architecture.md` and referenced by historical audit reports, and the architecture decision requires compatibility during refactoring. Verify production clients, scheduled commands, container bindings, and the intended replacement service before removal; update architecture/audit documentation if retired.
+- ~~`backend/app/Services/Scheduling/GenerateScheduleService.php`~~ — **RESOLVED: removed.** Verification found no runtime import, route, job, command, container binding, or test reference, and two further findings settled it: its `accept()` called `json_decode` on the `array`-cast `recommended_schedules` attribute (a `TypeError` on entry, present since the method was written 11 days after that cast landed, so it cannot have had a live consumer), and it re-derived curriculum from the department's active curriculum — the fallback `SectionCurriculumResolver` explicitly forbids. Architecture documentation updated.
 - `backend/app/Models/ScheduleSubmissionSection.php` — no direct application reference was found, but it maps the authoritative `schedule_submission_sections` table and may be used through Eloquent relationship conventions or future workflow code. Inspect `ScheduleSubmission`, migrations, admin tooling, and serialized model usage before removal.
 - `wicars-ui/src/components/curriculum/CurriculumDetailModal.tsx` and `YearLevelTabs.tsx` — no consumers beyond their own definitions were found. Verify whether they are intended extension points, dynamically referenced by tooling, or superseded by `CurriculumDetailPage` before removal.
 - Frontend test-only files with no production consumer are generally intentional coverage and should be retained; do not classify them as dead code solely from import counts.
@@ -38,13 +38,13 @@ The asset candidates should be removed as one small batch so the resulting asset
 - Duplicate login-pattern assets exist in both `src/assets` and `public`, and both JPG and PNG forms exist. The bundled JPG is the only referenced implementation; the other three are redundant.
 - `src/assets/campus-bg.jpg` and `public/campus-bg.jpg` are identical copies. Keep the bundled source asset and remove the public copy after URL verification.
 - React route aliases are intentional compatibility paths, not duplicates to remove: `/calendar` and `/vpaa/calendar`, `/secretary/courses` and `/secretary/subjects`, and `/program_head/faculty` and `/program_head/instructors` all target shared pages. See `wicars-ui/src/App.tsx`.
-- `GenerateScheduleService` versus newer year-level/split/preflight services may represent a compatibility boundary rather than harmless duplication. Do not merge or delete until endpoint and client behavior is proven equivalent.
+- ~~`GenerateScheduleService` versus newer year-level/split/preflight services~~ — resolved; it was dead rather than a live compatibility boundary (see section 2). The remaining generator overlap is `SplitScheduleService`, which enumerates its own day/slot/room candidates instead of using `CspSolver`. That duplication is deliberate and constraint-correct — it validates every candidate through `RuleEngine`, which enforces the department online/field slot limits — so it is live and must not be removed.
 
 ## 4. Dependencies and references affected
 
 - Removing `StoreUserRequest.php` affects only Composer PSR-4 discovery; no route/controller contract changes are expected.
 - Removing assets affects Vite's asset graph and any external requests to `/login-pattern.*`, `/campus-bg.jpg`, `/favicon.svg`, or `/icons.svg`.
-- Removing `GenerateScheduleService.php` could affect undocumented container resolution, queue payloads, scripts, or external integrations even though in-repo references are absent.
+- ~~Removing `GenerateScheduleService.php`~~ — done. Residual risk was bounded by the fact that its `accept()` raised a `TypeError` on entry, so any external integration calling it was already failing; the backend suite showed no change (20 pre-existing failures before and after, identical failure names).
 - Removing `ScheduleSubmissionSection.php` could affect relationship hydration, serialization, factories, or migration-era operational tooling.
 - No package dependency was confirmed unused from manifest inspection alone. Dependency removal requires a separate lockfile-aware analysis and build/test run.
 
@@ -54,7 +54,7 @@ The asset candidates should be removed as one small batch so the resulting asset
 2. Remove unreferenced duplicate assets and the empty `StoreUserRequest` scaffold.
 3. Run frontend type-check, lint, unit tests, and production build; run Laravel route discovery and focused backend tests.
 4. Verify public URL usage, deployment manifests, monitoring/health checks, and any scheduled jobs.
-5. Decide the fate of `GenerateScheduleService` and `ScheduleSubmissionSection` with explicit owner approval; update architecture documentation if either is retired.
+5. ~~Decide the fate of `GenerateScheduleService`~~ — done with owner approval; removed and architecture documentation updated. `ScheduleSubmissionSection` is still undecided and needs the same treatment.
 6. Only then consider non-source artifacts (database backups, generated reports, `tmp/`, IDE metadata). Prefer ignoring or archiving them rather than deleting recovery artifacts as part of application cleanup.
 
 ## 6. Risks and regression controls

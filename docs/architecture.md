@@ -45,8 +45,6 @@ only scores feasible candidates; it must not replace hard validation.
 The application services around the solver are currently split between legacy
 controller orchestration and the refactoring boundary:
 
-- `GenerateScheduleService` is a legacy compatibility service for the older
-  recommendation flow; it is not the active controller boundary.
 - `GenerateSectionSchedulePlans` is the production section-level application
   adapter. It owns preflight, requirement construction, configuration
   confirmation, and legacy response mapping around `GenerateSchedulePlan`.
@@ -243,9 +241,15 @@ exercise the port-backed adapter. The deleted `LegacyCspSolverCompatibilityAdapt
 is no longer part of the application dependency graph; direct low-level solver
 tests remain explicit compatibility tests and are not production entry points.
 
-The legacy `GenerateScheduleService` generation path now delegates through
-`GenerateSectionSchedulePlans`, preserving its legacy response and persistence
-shape while removing direct solver and candidate-optimizer orchestration.
+The legacy `GenerateScheduleService` has been removed. It had no runtime,
+route, command, or test caller; its `accept()` path called `json_decode` on the
+`array`-cast `recommended_schedules` attribute, so it raised a `TypeError` on
+entry from the day it was written and could not have had a live consumer; and it
+re-derived a section's curriculum from the department's active curriculum, the
+fallback `SectionCurriculumResolver` explicitly forbids. Section generation runs
+through `GenerateSectionSchedulePlans`, and acceptance through
+`CommitSchedulePlan`, which additionally locks the recommendation row, enforces
+the department guard, and records an audit entry.
 
 The recommendation portion of this gate now has an explicit migration tool:
 `php artisan scheduling:backfill-recommendation-plans`. It reports updated,
@@ -262,7 +266,8 @@ the backfill command and acceptance is routed through `CommitSchedulePlan`.
 The solver's database-loader branch remains only as a low-level compatibility
 surface for legacy direct APIs/tests; production generation is snapshot-only.
 
-Do not remove `GenerateScheduleService` or legacy response mapping until their
-consumer contracts are retired. Any future removal of the CSP compatibility
-loader must be preceded by migrating the remaining direct low-level tests to a
-dedicated test fixture that supplies a `SchedulingSnapshot`.
+`GenerateScheduleService` is gone (see above); the legacy response mapping it
+shared with `GenerateSectionSchedulePlans` stays until the remaining consumer
+contracts are retired. Any future removal of the CSP compatibility loader must
+be preceded by migrating the remaining direct low-level tests to a dedicated
+test fixture that supplies a `SchedulingSnapshot`.
