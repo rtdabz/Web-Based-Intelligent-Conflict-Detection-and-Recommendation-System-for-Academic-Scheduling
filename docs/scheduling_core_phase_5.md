@@ -1,5 +1,17 @@
 # Scheduling Core Phase 5 Solver Boundaries
 
+> **Status: partially retired.** The snapshot-propagation half of this phase was
+> never adopted. `SchedulingHardConstraintPropagator`, `CspCandidateRowMapper`,
+> and the `SOLVER_CONSTRAINT_SHADOW` shadow-mode flag have been deleted:
+> shadow mode was removed from `CspSolver` earlier, which left them with no
+> caller and no test coverage, and `CspSolver::prunePersistedConflictingCandidates`
+> remains the runtime authority for persisted-conflict pruning. The solver-port
+> half of the phase (`SchedulingSolver`, `CspSchedulingSolverAdapter`,
+> `SolverResultMapper`, `SolverVariableDomain`, `SolverDomainCompilation`,
+> `LegacyCspDomainCompiler`, `SolverDomainParityReporter`) is still in use.
+> Sections below are kept as a record of the original design; treat any
+> propagation or shadow-mode instruction as historical, not current.
+
 ## Decision
 
 Phase 5 introduces explicit boundaries around the existing CSP without replacing
@@ -26,16 +38,14 @@ to a new search implementation in this phase.
 | Component | Responsibility |
 |---|---|
 | `SchedulingSolver` | Stable application port returning domain `ScheduleCandidate` contracts |
-| `LegacyCspSolverAdapter` | Delegates the stable port to the current `CspSolver` schema |
+| `CspSchedulingSolverAdapter` | Delegates the stable port to the current `CspSolver` schema |
 | `SolverResultMapper` | Maps ranked legacy results to immutable candidates |
 | `SolverVariableDomain` | Represents one course variable and its candidate domain |
 | `SolverDomainCompilation` | Carries fingerprinted domains and pruning instrumentation |
 | `LegacyCspDomainCompiler` | Normalizes existing CSP variable arrays into the immutable domain boundary |
-| `CspCandidateRowMapper` | Converts one internal CSP candidate group into one or more `ScheduleRow` contracts |
-| `SchedulingHardConstraintPropagator` | Prunes persisted-conflicting candidates using the Phase 3 kernel and Phase 2 snapshot |
 | `SolverDomainParityReporter` | Compares candidate identities after legacy and canonical pruning |
 
-The Laravel container binds `SchedulingSolver` to `LegacyCspSolverAdapter`. This
+The Laravel container binds `SchedulingSolver` to `CspSchedulingSolverAdapter`. This
 allows later application services to depend on the port while preserving the
 current implementation.
 
@@ -85,11 +95,17 @@ reports legacy-only and canonical-only candidates. Search-only annotations such
 as `_weekday_physical_available` are excluded from identity because they do not
 describe a placement.
 
-## Shadow Mode
+## Shadow Mode (removed)
 
-Set `SOLVER_CONSTRAINT_SHADOW=true` to make the active legacy solver dual-run the
-snapshot propagator after domain construction. The solver exposes the most recent
-comparison through `constraintPropagationReport()`.
+This mode no longer exists. It is described here only to explain why the
+propagation components were retired.
+
+It originally worked as follows: `SOLVER_CONSTRAINT_SHADOW=true` made the active
+legacy solver dual-run the snapshot propagator after domain construction, and the
+solver exposed the most recent comparison through `constraintPropagationReport()`.
+That dual-run was removed from `CspSolver`; the flag and the propagator it drove
+have now been deleted as well. Re-introducing a parity pass means rebuilding the
+propagator against the current kernel, not re-enabling a flag.
 
 Shadow mode:
 
