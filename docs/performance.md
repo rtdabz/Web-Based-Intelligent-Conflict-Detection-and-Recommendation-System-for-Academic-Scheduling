@@ -11,6 +11,21 @@ SESSION_DRIVER=redis
 PERFORMANCE_LOGGING=true
 ```
 
+Keep `BCRYPT_ROUNDS=12` in production. Each round doubles the work, and at 12 a
+single `Hash::make`/`Hash::check` measured ~340ms — paid once on login and once
+on account creation. Local development may drop to 10 (~85ms) to keep those
+flows responsive; do not carry that value into a deployed environment.
+
+## Outbound mail
+
+Account-creation and password-reset notifications implement `ShouldQueue`. A
+single SMTP session to Gmail measured ~2.3s just to finish `STARTTLS` and the
+second `EHLO`, and roughly 4s through `AUTH`/`DATA`/`QUIT` — which is why the
+send must never sit inside the HTTP request. Note that `use Queueable` alone
+does not defer anything; the `ShouldQueue` contract is what moves the work to a
+worker. A `default` queue worker must be running for these mails to leave the
+`jobs` table.
+
 ## API caching
 
 The API uses the versioned `ApiCache` groups for read-heavy lookup payloads.
@@ -24,6 +39,31 @@ intentional. Terms, rooms, departments, sections, courses, and faculty writes
 invalidate the `initial.data` group after persistence. Faculty and course list
 endpoints also use scoped five-minute caches, invalidated by their related
 mutations and instructor-assignment changes.
+
+### Narrowing an `initial.data` invalidation
+
+A cold `GET /api/initial-data` measured ~550ms against a 600KB payload (~140ms of
+SQL, ~310ms of `json_encode`) versus ~9ms warm, so the blast radius of an
+invalidation matters. The endpoint's key therefore comes from
+`ApiCache::compositeKey()`, which versions it by the group *and* by each
+requested section (`initial.data.rooms`, `initial.data.users`, …). A write may
+bump only the sections it touched; `?include=schedules` callers then keep their
+cached payload. Bumping `initial.data` itself still invalidates everything, and
+remains the correct default for any write that cannot be narrowed confidently.
+
+Two rules before narrowing a write path:
+
+- Account for the keys that ship outside `OPTIONAL_SECTIONS`. `has_dean`,
+  `scheduling_ready`, `active_term`, `time_grid`, and the `field_course_*` and
+  `resource_slot_limits` entries are in *every* response, including ones that
+  request no related section. `POST /api/user` narrows to
+  `users`/`faculties`/`departments` for this reason only when the new account is
+  not an active dean, because `has_dean` is derived from users.
+- Account for data duplicated into a section's nested relations. `schedules`
+  embeds columns from `faculty`, so renaming a user through
+  `UserFacultyProfileService::sync()` changes the `schedules` payload even though
+  no schedule row was written. Account *creation* is exempt: a new faculty
+  profile has no meetings yet.
 
 Do not cache mutations, notifications, activity logs, generation-run status, or
 solver decisions. Schedule and approval changes must continue to invalidate
