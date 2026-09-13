@@ -81,7 +81,7 @@ See [[architecture]] and [[business_rules]] for ownership rules.
 - Declare mass-assignable fields with `$fillable`.
 - Declare boolean, JSON, date, and numeric casts when callers depend on typed values.
 - Define relationships on models instead of repeating joins when the relationship is part of the domain model.
-- Respect historical naming exceptions such as `Curriculum` using the singular `curriculum` table and plural model names including `Departments`, `Rooms`, `Sections`, and `Terms`.
+- Respect historical naming exceptions such as `Curriculum` using the singular `curriculum` table and plural model names including `Departments`, `Rooms`, and `Sections`.
 - Inspect model lifecycle hooks before bypassing Eloquent. `Schedule` writes schedule history from model events, and `Curriculum` enforces active-curriculum behavior during saving.
 - Use query-builder or bulk updates only after confirming which Eloquent events, casts, and audit records would be skipped.
 

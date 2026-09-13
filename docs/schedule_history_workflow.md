@@ -10,7 +10,7 @@ The existing `scheduling_audit_logs` table should remain the activity/audit trai
 
 ```mermaid
 flowchart TD
-    A[User opens Schedule Builder or Approval page] --> B[Load current schedules for department and term]
+    A[User opens Schedule Builder or Approval page] --> B[Load current schedules for department and semester]
     B --> C{Requested action}
 
     C -->|Create, edit, archive, batch replace| D[Validate authentication, role, and department scope]
@@ -25,7 +25,7 @@ flowchart TD
     G -->|No| G1[Return 422 with validation or conflict details]
     G -->|Yes| H[Begin database transaction]
 
-    H --> I[Lock affected schedule scope by term and department]
+    H --> I[Lock affected schedule scope by semester and department]
     I --> J[Read current affected schedules as before-state]
     J --> K[Apply schedule or workflow change]
     K --> L[Read affected schedules as after-state]
@@ -44,7 +44,7 @@ flowchart TD
     V1 --> V2[Authorize history access by role and department]
     V2 --> V3{Authorized?}
     V3 -->|No| E1
-    V3 -->|Yes| V4[Filter versions by term, department, section, action, actor, or date]
+    V3 -->|Yes| V4[Filter versions by semester, department, section, action, actor, or date]
     V4 --> V5[Show newest-first version timeline]
     V5 --> V6[User selects a version]
     V6 --> V7[Load immutable snapshot and change summary]
@@ -64,14 +64,14 @@ flowchart TD
 ```mermaid
 erDiagram
     USERS ||--o{ SCHEDULE_HISTORY_VERSIONS : creates
-    TERMS ||--o{ SCHEDULE_HISTORY_VERSIONS : groups
+    SEMESTERS ||--o{ SCHEDULE_HISTORY_VERSIONS : groups
     DEPARTMENTS ||--o{ SCHEDULE_HISTORY_VERSIONS : owns
     SCHEDULE_HISTORY_VERSIONS ||--|{ SCHEDULE_HISTORY_ITEMS : contains
     SCHEDULE_HISTORY_VERSIONS ||--o{ SCHEDULING_AUDIT_LOGS : referenced_by
 
     SCHEDULE_HISTORY_VERSIONS {
         bigint id PK
-        bigint term_id FK
+        bigint semester_id FK
         bigint department_id FK
         bigint actor_user_id FK
         string action
@@ -104,14 +104,14 @@ erDiagram
 
 ## Capture Rules
 
-- Activating a different term is an atomic transition. The system locks the old and new terms, archives the previous term's VPAA-approved schedules as one complete `schedule_term_archived` snapshot, soft-deletes the previous term's live schedule rows, resets old live schedules and sections attached to both term records, and activates the new term. This gives every newly activated term an empty section workspace and prevents either side of the transition from retaining stale sections, while preserving the ended term's schedules through immutable schedule-history snapshots. VPAA approval is represented by `approved` and its operational descendants `faculty_assignment`, `reassignment`, and `finalized`; Dean-approved, pending, draft, rejected, and revision rows are excluded. The archive is linked to the actor and the previous term, and the transition is recorded in the scheduling audit log.
-- Term archives copy the schedule attributes and display labels for sections, courses, faculty, and rooms into the history item. Historical timetable rendering therefore remains stable after live schedules or related records change.
+- Activating a different semester is an atomic transition. The system locks the old and new semesters, archives the previous semester's VPAA-approved schedules as one complete `schedule_semester_archived` snapshot, soft-deletes the previous semester's live schedule rows, resets old live schedules and sections attached to both semester records, and activates the new semester. This gives every newly activated semester an empty section workspace and prevents either side of the transition from retaining stale sections, while preserving the ended semester's schedules through immutable schedule-history snapshots. VPAA approval is represented by `approved` and its operational descendants `faculty_assignment`, `reassignment`, and `finalized`; Dean-approved, pending, draft, rejected, and revision rows are excluded. The archive is linked to the actor and the previous semester, and the transition is recorded in the scheduling audit log.
+- Semester archives copy the schedule attributes and display labels for sections, courses, faculty, and rooms into the history item. Historical timetable rendering therefore remains stable after live schedules or related records change.
 - The history viewer's Print Schedule action mounts the Schedule Builder's existing print component with the immutable snapshot data, preserving the builder's formatting and A4 landscape PDF output.
 
 - Capture history only after authorization and validation pass.
 - Keep the live schedule change, history version, history items, and existing audit event in the same database transaction.
 - Create one version per user action or API request, not one version per changed row.
-- For batch saves, replacements, approval transitions, withdrawal, and finalization, snapshot the complete affected department-and-term schedule so each version can be rendered independently.
+- For batch saves, replacements, approval transitions, withdrawal, and finalization, snapshot the complete affected department-and-semester schedule so each version can be rendered independently.
 - Store both a concise `change_summary` and the complete snapshot. The summary supports the timeline; the snapshot supports reliable comparison and recovery.
 - Never update or delete history through ordinary application endpoints.
 - Do not store passwords, tokens, request headers, or other secrets in history metadata.
@@ -154,7 +154,7 @@ These names should reuse the existing audit action names wherever they already e
 
 ## Restore Safety
 
-History is read-only by default. A restore should never overwrite the live schedule directly. It should create a proposed draft or revision, then pass through the same department authorization, active-term checks, workflow-stage restrictions, conflict validation, faculty-load validation, and approval process used by normal schedule changes.
+History is read-only by default. A restore should never overwrite the live schedule directly. It should create a proposed draft or revision, then pass through the same department authorization, active-semester checks, workflow-stage restrictions, conflict validation, faculty-load validation, and approval process used by normal schedule changes.
 
 ## Suggested API Surface
 

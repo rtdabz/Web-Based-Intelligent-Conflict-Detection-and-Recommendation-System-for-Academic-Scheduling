@@ -77,7 +77,7 @@ every phase is already the sole production implementation.
 ## Write and approval flow
 
 Schedule writes are validated inside a transaction and serialized with the
-term-level scheduling lock. New rows start as `draft`; approval transitions are
+semester-level scheduling lock. New rows start as `draft`; approval transitions are
 handled by the approval endpoints, not by ordinary batch plotting updates.
 Notifications and cache invalidation happen after a successful commit.
 
@@ -111,7 +111,7 @@ not replace existing runtime arrays until the owning application-service phase i
 migrated and covered by parity tests.
 
 `SchedulingSnapshotRepository` is the database boundary for the refactored core.
-It captures normalized term-wide conflict state and department configuration in a
+It captures normalized semester-wide conflict state and department configuration in a
 versioned `SchedulingSnapshot`; see [[scheduling_core_phase_2]]. Rules and solver
 code must migrate to this shared snapshot incrementally rather than adding new
 database queries inside search or validation loops.
@@ -150,7 +150,7 @@ violations, recommendations, scores, and generation metadata. Legacy
 
 Phase 7 adds `CommitSchedulePlan` as the single fresh-snapshot persistence
 boundary for final plans; see [[scheduling_core_phase_7]]. It shares the existing
-term advisory lock with batch writes, rejects stale or invalid plans, replaces
+semester advisory lock with batch writes, rejects stale or invalid plans, replaces
 only editable rows, persists through Eloquent lifecycle events, and records
 aggregate history and audit evidence in the same transaction. It is currently a
 tested service boundary; controller and job adoption remains deferred until
@@ -204,7 +204,7 @@ capacity limits, and department scheduling flags from `SchedulingSnapshot`.
 This removes room/resource/settings queries from the snapshot path while
 leaving the legacy loader branch for direct non-snapshot callers.
 
-Order 9 makes section, term, course, and curriculum-period data snapshot-
+Order 9 makes section, semester, course, and curriculum-period data snapshot-
 authoritative for snapshot-aware solver runs. Existing Eloquent model shapes
 are hydrated from normalized snapshot records so candidate builders and rule
 checks retain their current behavior without issuing those loader queries.

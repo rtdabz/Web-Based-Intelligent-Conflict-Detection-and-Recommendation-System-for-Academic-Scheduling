@@ -37,9 +37,9 @@ erDiagram
     PROGRAMS ||--o{ COURSES : scopes
     CURRICULUM ||--o{ CURRICULUM_COURSE : contains
     COURSES ||--o{ CURRICULUM_COURSE : placed_in
-    TERMS ||--o{ SECTIONS : groups
+    SEMESTERS ||--o{ SECTIONS : groups
     PROGRAMS ||--o{ SECTIONS : groups
-    TERMS ||--o{ SCHEDULES : scopes
+    SEMESTERS ||--o{ SCHEDULES : scopes
     SECTIONS ||--o{ SCHEDULES : receives
     COURSES ||--o{ SCHEDULES : scheduled_as
     FACULTIES ||--o{ SCHEDULES : teaches
@@ -125,18 +125,20 @@ See [[business_rules]] for course ownership and teaching-assignment rules.
 - Many-to-many placement between `curriculum` and `courses`.
 - Stores placement-specific numeric `year_level` and `semester` values.
 - Prevents duplicate `curriculum_id + course_id` pairs.
-- Indexed by `curriculum_id + year_level + semester` for term lookups.
+- Indexed by `curriculum_id + year_level + semester` for semester lookups.
 - Both foreign keys cascade on delete.
 
-### `terms`
+### `semesters`
 
 - Stores academic year, semester, active state, and enabled state.
-- The schema does not enforce only one active term. Use the existing term activation workflow.
-- Uses soft deletes; the active term still cannot be archived.
+- Formerly `terms`; renamed by `2026_09_13_000003_rename_terms_to_semesters`, which also renamed every `term_id` to `semester_id` and rewrote stored `term_*` payload keys and audit actions.
+- The `semester` column holds the period (`1st`, `2nd`, `summer`), and `sections` has a column of the same name. Other models therefore reach this table through the `academicSemester()` relation (serialized as `academic_semester`), never `semester()`, which would be shadowed by that column.
+- The schema does not enforce only one active semester. Use the existing semester activation workflow.
+- Uses soft deletes; the active semester still cannot be archived.
 
 ### `sections`
 
-- Belongs to a department, program, and term. `program_id` is nullable only for
+- Belongs to a department, program, and semester. `program_id` is nullable only for
   legacy rows during migration; new sections must belong to a program owned by
   the same department.
 - Stores section name, year level, semester, and active/inactive status.
@@ -154,7 +156,7 @@ See [[business_rules]] for course ownership and teaching-assignment rules.
 ### `schedules`
 
 - Central persisted timetable row.
-- Belongs to term, section, course, owning department, and (for new rows) the
+- Belongs to semester, section, course, owning department, and (for new rows) the
   selected program. Department remains the approval/authorization boundary;
   program is the academic scheduling scope and must match the section.
 - Faculty is nullable and becomes null when the faculty record is deleted.
@@ -169,9 +171,9 @@ Do not use bulk query-builder writes for schedules unless intentionally handling
 
 ### `schedule_submissions`
 
-- One row represents one department-and-term submission or revision cycle.
+- One row represents one department-and-semester submission or revision cycle.
 - Stores the authoritative workflow status, revision number, parent revision, submitter, Dean and VPAA reviewers, review timestamps, withdrawal actor/time, rejection reason, and Room TBA override decision.
-- The unique `(department_id, term_id, revision_number)` key prevents two cycles from claiming the same revision number.
+- The unique `(department_id, semester_id, revision_number)` key prevents two cycles from claiming the same revision number.
 - Approval queues must filter this table directly. They must not infer submission state from a mixture of timetable rows and notifications.
 
 ### `schedule_submission_sections`
@@ -196,7 +198,7 @@ Do not use bulk query-builder writes for schedules unless intentionally handling
 
 ### `schedule_recommendations`
 
-- Stores ranked generated recommendations for a term, section, and department.
+- Stores ranked generated recommendations for a semester, section, and department.
 - Keeps JSON input and recommended schedule payloads.
 - New section recommendations preserve legacy input fields and add a versioned
   `_scheduling` envelope containing the normalized generation configuration,
@@ -208,12 +210,12 @@ Do not use bulk query-builder writes for schedules unless intentionally handling
 ### `schedule_generation_runs`
 
 - Tracks asynchronous generation requests by unique `run_id`.
-- Scoped by requester, term, department, and year level.
+- Scoped by requester, semester, department, and year level.
 - Stores status, JSON result, error message, and execution timestamps.
 - Successful previews and structured scheduling failures store the Phase 9
   `generation_metrics` envelope inside the existing JSON result; no schema
   migration is required.
-- Indexed for status and department/term/year-level history queries.
+- Indexed for status and department/semester/year-level history queries.
 
 ### Scheduling Configuration
 
@@ -227,19 +229,19 @@ Do not use bulk query-builder writes for schedules unless intentionally handling
 
 ### `schedule_history_versions` and `schedule_history_items`
 
-- `schedule_history_versions` stores the archived term, immutable academic-year and semester labels, department scope, actor, action, source, and summary.
-- Term changes create one version for the complete VPAA-approved schedule of each department in the previous term.
+- `schedule_history_versions` stores the archived semester, immutable academic-year and semester labels, department scope, actor, action, source, and summary.
+- Semester changes create one version for the complete VPAA-approved schedule of each department in the previous semester.
 - `schedule_history_items` stores one immutable schedule snapshot per archived schedule row.
 - `original_schedule_id` is provenance only and has no foreign key; section, course, faculty, room, time, day, delivery mode, and other schedule values are preserved in JSON snapshots.
 - `snapshot_metadata` stores historical display labels so rendering does not depend on current section, course, faculty, room, or department records.
-- Existing history data is cleared by the forward-only cleanup migration before the new whole-department term archives are used.
+- Existing history data is cleared by the forward-only cleanup migration before the new whole-department semester archives are used.
 
 ### `scheduling_audit_logs`
 
 - Records scheduling actions and optional JSON metadata.
 - Related entities use nullable references so audit evidence survives deletion.
 - Uses `created_at` only, not normal Eloquent update timestamps.
-- Indexed for chronological, action, and department/term queries.
+- Indexed for chronological, action, and department/semester queries.
 
 ### `authentication_audit_logs`
 
@@ -251,7 +253,7 @@ Do not use bulk query-builder writes for schedules unless intentionally handling
 ### `system_notifications`
 
 - Belongs to the recipient user and cascades when the recipient is deleted.
-- Actor, department, and term references become null to retain the notification.
+- Actor, department, and semester references become null to retain the notification.
 - Includes type, title, message, optional remarks, metadata, and read timestamp.
 - Indexed for recipient timelines, unread checks, and workflow scope.
 
@@ -263,7 +265,7 @@ Laravel and installed packages also create supporting tables for personal access
 
 ## Delete Behavior Principles
 
-- User-facing deletion of users, departments, programs, rooms, faculty, courses, terms, sections, schedules, schedule splits, and timeslot overrides is an archive operation implemented with Eloquent soft deletes.
+- User-facing deletion of users, departments, programs, rooms, faculty, courses, semesters, sections, schedules, schedule splits, and timeslot overrides is an archive operation implemented with Eloquent soft deletes.
 - Curricula retain their established business `status = archived` workflow and restore UI rather than using `deleted_at`.
 - The VPAA Archive API and page list soft-deleted domain records and restore them. No ordinary application route permanently deletes archived domain records.
 - Token revocation, Google unlinking, caches, sessions, and replacement/synchronization writes remain immediate deletes because they are security or transient implementation data, not archived domain records.
@@ -331,8 +333,8 @@ Before a production migration:
 
 - The canonical curriculum table is singular: `curriculum`.
 - The timeslot override table is singular: `timeslot_override`.
-- Several models use plural class names: `Departments`, `Rooms`, `Sections`, and `Terms`.
-- Some workflow invariants, including one active term and one active curriculum per scope, are enforced by application workflows rather than database constraints.
+- Several models use plural class names: `Departments`, `Rooms`, and `Sections`.
+- Some workflow invariants, including one active semester and one active curriculum per scope, are enforced by application workflows rather than database constraints.
 - Schedule status evolution contains MySQL-specific enum SQL; portability must be considered when adding statuses.
 
 Do not correct these exceptions through isolated renames. Any normalization must be a coordinated migration across models, queries, APIs, tests, and frontend consumers.
@@ -364,5 +366,5 @@ Last verified against the repository on 2026-08-30.
 - `schedule_history_items.original_schedule_id` is the only relational schedule identifier. Section, course, faculty, and room identifiers are retained inside the immutable JSON snapshot, while their historical display labels are stored in `snapshot_metadata`.
 - Legacy audit rows that cannot be matched to exactly one history version are marked `legacy_history` in activity-log responses rather than being guessed.
 - Asynchronous generation previews are intentionally transient; `schedule_generation_runs.result` is the durable preview artifact. Recommendations are persisted when selected or applied.
-- Schedule term archives include only `approved`, `faculty_assignment`, `reassignment`, and `finalized` schedule rows.
+- Schedule semester archives include only `approved`, `faculty_assignment`, `reassignment`, and `finalized` schedule rows.
 - Data-destructive migrations and cleanup migrations require a backup and should be treated as forward-only in production.

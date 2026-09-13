@@ -35,7 +35,7 @@ valid for local development and single-node fallback deployments.
 `GET /api/initial-data` is cached for 15 seconds using a key scoped by role,
 department, program, pagination, and schedule-limit parameters. This endpoint
 contains both reference data and active workflow rows, so the short TTL is
-intentional. Terms, rooms, departments, sections, courses, and faculty writes
+intentional. Semesters, rooms, departments, sections, courses, and faculty writes
 invalidate the `initial.data` group after persistence. Faculty and course list
 endpoints also use scoped five-minute caches, invalidated by their related
 mutations and instructor-assignment changes.
@@ -54,7 +54,7 @@ remains the correct default for any write that cannot be narrowed confidently.
 Two rules before narrowing a write path:
 
 - Account for the keys that ship outside `OPTIONAL_SECTIONS`. `has_dean`,
-  `scheduling_ready`, `active_term`, `time_grid`, and the `field_course_*` and
+  `scheduling_ready`, `active_semester`, `time_grid`, and the `field_course_*` and
   `resource_slot_limits` entries are in *every* response, including ones that
   request no related section. `POST /api/user` narrows to
   `users`/`faculties`/`departments` for this reason only when the new account is
@@ -110,7 +110,7 @@ Restart that worker after local scheduling code changes, or use the
 
 ## Load testing
 
-Measure p50/p95 latency for `/api/initial-data`, `/api/schedules/term/{termId}`, and the queue submission endpoint with realistic schedule counts. Test at least 10, 25, and 50 concurrent users, and monitor PHP worker CPU, memory, MySQL slow queries, Redis queue depth, and failed jobs.
+Measure p50/p95 latency for `/api/initial-data`, `/api/schedules/semester/{semesterId}`, and the queue submission endpoint with realistic schedule counts. Test at least 10, 25, and 50 concurrent users, and monitor PHP worker CPU, memory, MySQL slow queries, Redis queue depth, and failed jobs.
 
 ## Scheduling generation metrics
 
@@ -127,7 +127,7 @@ Track these fields when comparing releases:
 
 Candidate and iteration counts are workload measures, not success criteria. A
 larger valid curriculum can legitimately produce a larger domain. Investigate
-regressions by comparing the same term, department, sections, configuration,
+regressions by comparing the same semester, department, sections, configuration,
 seed, and database snapshot.
 
 With `PERFORMANCE_LOGGING=true`, the application emits structured

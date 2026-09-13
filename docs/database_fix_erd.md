@@ -20,10 +20,10 @@ erDiagram
     USERS ||--o{ SCHEDULE_HISTORIES : acts
     USERS ||--o{ SCHEDULING_AUDIT_LOGS : creates
 
-    TERMS ||--o{ SECTIONS : contains
-    TERMS ||--o{ SCHEDULES : scopes
-    TERMS ||--o{ SCHEDULE_RECOMMENDATIONS : scopes
-    TERMS ||--o{ SCHEDULE_GENERATION_RUNS : scopes
+    SEMESTERS ||--o{ SECTIONS : contains
+    SEMESTERS ||--o{ SCHEDULES : scopes
+    SEMESTERS ||--o{ SCHEDULE_RECOMMENDATIONS : scopes
+    SEMESTERS ||--o{ SCHEDULE_GENERATION_RUNS : scopes
 
     DEPARTMENTS ||--o{ SECTIONS : owns
     DEPARTMENTS ||--o{ SCHEDULES : owns
@@ -43,7 +43,7 @@ erDiagram
         bigint id PK
         uuid run_id UK
         bigint requested_by FK
-        bigint term_id FK
+        bigint semester_id FK
         bigint department_id FK
         tinyint year_level
         varchar status
@@ -53,7 +53,7 @@ erDiagram
 
     SCHEDULE_RECOMMENDATIONS {
         bigint id PK
-        bigint term_id FK
+        bigint semester_id FK
         bigint section_id FK
         bigint department_id FK
         bigint requested_by FK
@@ -65,7 +65,7 @@ erDiagram
     SCHEDULE_HISTORIES {
         bigint id PK
         bigint schedule_id "historical id, intentionally no FK"
-        bigint term_id FK
+        bigint semester_id FK
         bigint section_id FK
         bigint course_id FK
         bigint department_id FK
@@ -87,9 +87,9 @@ erDiagram
     USERS ||--o{ SCHEDULE_HISTORY_VERSIONS : acts
     USERS ||--o{ SCHEDULING_AUDIT_LOGS : creates
 
-    TERMS ||--o{ SCHEDULE_GENERATION_RUNS : scopes
-    TERMS ||--o{ SCHEDULE_RECOMMENDATIONS : scopes
-    TERMS ||--o{ SCHEDULE_HISTORY_VERSIONS : groups
+    SEMESTERS ||--o{ SCHEDULE_GENERATION_RUNS : scopes
+    SEMESTERS ||--o{ SCHEDULE_RECOMMENDATIONS : scopes
+    SEMESTERS ||--o{ SCHEDULE_HISTORY_VERSIONS : groups
     DEPARTMENTS ||--o{ SCHEDULE_GENERATION_RUNS : owns
     DEPARTMENTS ||--o{ SCHEDULE_RECOMMENDATIONS : owns
     DEPARTMENTS ||--o{ SCHEDULE_HISTORY_VERSIONS : owns
@@ -106,7 +106,7 @@ erDiagram
 
     SCHEDULE_HISTORY_VERSIONS {
         bigint id PK
-        bigint term_id FK
+        bigint semester_id FK
         bigint department_id FK
         bigint actor_user_id FK
         varchar action
@@ -142,7 +142,7 @@ erDiagram
         bigint id PK
         uuid run_id UK
         bigint requested_by FK
-        bigint term_id FK
+        bigint semester_id FK
         bigint department_id FK
         tinyint year_level
         varchar status
@@ -153,7 +153,7 @@ erDiagram
     SCHEDULE_RECOMMENDATIONS {
         bigint id PK
         bigint generation_run_id FK "nullable for synchronous/manual generation"
-        bigint term_id FK
+        bigint semester_id FK
         bigint section_id FK
         bigint department_id FK
         bigint requested_by FK
@@ -166,7 +166,7 @@ erDiagram
 ## Integration Rules
 
 1. Begin one database transaction for each schedule action.
-2. Lock the affected term/department scope and read the before-state.
+2. Lock the affected semester/department scope and read the before-state.
 3. Apply normal schedule changes, replacement, status transition, or assignment.
 4. Create one `schedule_history_versions` row and one item per affected schedule.
 5. Write the scheduling audit row with `history_version_id` in its metadata.
