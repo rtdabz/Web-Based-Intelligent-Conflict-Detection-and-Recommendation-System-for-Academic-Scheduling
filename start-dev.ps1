@@ -44,6 +44,14 @@ $queueWorker = Start-WicarsProcess `
     -WorkingDirectory $backendRoot `
     -Hidden
 
+# Live updates: the WebSocket server browsers subscribe to. The app keeps
+# working without it, but pages then only refresh on navigation.
+$reverb = Start-WicarsProcess `
+    -FilePath $php `
+    -ArgumentList @((Join-Path $backendRoot 'artisan'), 'reverb:start') `
+    -WorkingDirectory $backendRoot `
+    -Hidden
+
 $vite = Start-WicarsProcess `
     -FilePath 'npm.cmd' `
     -ArgumentList @('run', 'dev') `
@@ -52,5 +60,6 @@ $vite = Start-WicarsProcess `
 Write-Host "WICARS development services started."
 Write-Host "Laravel server PID: $($backendServer.Id)"
 Write-Host "Scheduling worker PID: $($queueWorker.Id)"
+Write-Host "Live updates (Reverb) PID: $($reverb.Id)"
 Write-Host "Vite server PID: $($vite.Id)"
 Write-Host "Keep this window open while developing."
