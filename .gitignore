@@ -7,8 +7,16 @@ mysql_data_backup_*/
 *.BAK
 *.err
 *.sql
+backend/scheduling_db
+
+# Editor / note-taking tool state
+.obsidian/
+2.x/
+*.canvas
 
 # Tooling output
+*.log
+backend/feature-results.xml
 node_modules/
 vendor/
 wicars-ui/dist/
