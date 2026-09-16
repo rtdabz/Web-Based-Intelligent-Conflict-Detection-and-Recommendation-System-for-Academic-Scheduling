@@ -11,22 +11,25 @@ Base roles identify organizational positions (`vpaa`, `dean`, `secretary`,
 `program_head`, and optional `director`). Scheduling actions are granted as
 generic Spatie permissions such as `schedule.create` and
 `schedule.assign_instructor`; a job title does not imply every scheduling
-action. User-specific grants use the existing `model_has_permissions` table.
+action. An account's capabilities come from its role alone; there are no
+per-account grants, and `model_has_permissions` is not used for users.
 
-Capability names, module metadata, role defaults, presets, and workflow role
-constraints are maintained in the backend capability registry
-(`backend/config/capabilities.php`). The authenticated user payload and VPAA
-access-matrix endpoint expose this registry to the React client, so module
-labels and capability rows are not duplicated in frontend code. The API still
+Capability names, module metadata, role defaults, and workflow role constraints
+are maintained in the backend capability registry
+(`backend/config/capabilities.php`). Secretaries and Program Heads share one
+schedule-building set; Deans hold view and dean approval; the VPAA holds every
+capability. The authenticated user payload exposes this registry to the React
+client, so module labels and capability rows are not duplicated in frontend
+code. The API still
 enforces every capability and workflow constraint; frontend locks are the
 corresponding usability layer.
 
 Resource scope remains data-driven: timetable mutations use
 `schedules.department_id` (and `program_id` for Program Heads), while faculty
 assignment uses `courses.teaching_department_id` and, where applicable,
-`teaching_program_id`. Permission assignments are selected per account through
-the VPAA user-management workflow; no department names or subject labels are
-hardcoded into authorization defaults.
+`teaching_program_id`. Changing what a role may do means editing its defaults
+and adding a migration that re-syncs the stored roles; no department names or
+subject labels are hardcoded into authorization defaults.
 
 Secretary and Program Head navigation, scheduling routes, and action controls
 are derived from these permissions. UI visibility is only a usability layer;
@@ -117,10 +120,36 @@ code must migrate to this shared snapshot incrementally rather than adding new
 database queries inside search or validation loops.
 
 Phase 3 adds a presentation-neutral constraint kernel under
-`App\Services\Scheduling\Constraints`; see [[scheduling_core_phase_3]]. The
+`App\Services\Scheduling\Engine\Constraints`; see [[scheduling_core_phase_3]]. The
 kernel consumes domain contracts and snapshots only, uses explicit rule
 priorities, and performs no database access. Existing validators remain the
 runtime authority until later phases replace each path under parity coverage.
+
+Both validators share one rule vocabulary. `RuleEngine` (live records) is a thin
+orchestrator over `Engine\Rules`, one class per concern, and the kernel
+(snapshots) mirrors each with a same-stem class in `Engine\Constraints\Families`:
+
+| Concern | `Engine\Rules` (RuleEngine) | `Engine\Constraints\Families` (kernel) |
+|---|---|---|
+| Records exist and are usable | `ReferenceIntegrityRule` | — |
+| Semester and curriculum placement | `CurriculumPlacementRule` | — |
+| Department, room grant, instructor department/program | `DepartmentAssignmentRule` | — |
+| Instructor active, part-time windows | `InstructorAvailabilityRule` | — |
+| Instructor clash | `InstructorConflictRule` | `InstructorConflictConstraints` |
+| Section clash, same online course | `SectionConflictRule` | `SectionConflictConstraints` |
+| Room status, booking, field/online capacity | `RoomAvailabilityRule` | `RoomAvailabilityConstraints` |
+| Room type for the delivery | `RoomTypeRule` | `RoomTypeConstraints` |
+| Slot grid, opening hours, field evening window | `OperatingHoursRule` | `OperatingHoursConstraints` (evening window only) |
+| Allowed days, pattern, forced day | `MeetingDayRule` | `MeetingDayConstraints` |
+| Delivery mode, hybrid, Sunday major, section online limit | `DeliveryModeRule` | `DeliveryModeConstraints` |
+| Weekly contact time per course and section | `ClassDurationRule` | — |
+| Hybrid and Split Session groups | `MeetingGroupRule` | `MeetingGroupConstraints` |
+
+The first four need live records and are not planned for the kernel. Rule ids
+are unchanged by this layout (`faculty_conflict`, `subject_exists`, ...), since
+the UI and the constraint catalog key on them. Migrating a concern onto the
+kernel means making its `Engine\Rules` class delegate to the matching family,
+one concern at a time with a parity test each.
 
 Phase 4 adds `ValidateGenerationConfiguration` as the application boundary for
 pre-generation configuration checks; see [[scheduling_core_phase_4]]. It captures

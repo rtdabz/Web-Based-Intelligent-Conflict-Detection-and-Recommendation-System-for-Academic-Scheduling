@@ -108,6 +108,61 @@ php artisan queue:work database --queue=scheduling,default --tries=1 --timeout=1
 Restart that worker after local scheduling code changes, or use the
 `composer run dev` listener, which reloads application code for each job.
 
+## Slow connections
+
+The API client (`wicars-ui/src/lib/api.ts`) is built to tolerate a slow or
+patchy network. It does not support offline editing: conflict detection needs
+the server's current data, so a save only counts once the server confirms it.
+
+- **Reads are retried.** A `GET` that gets no answer, or a 502/503/504, is
+  resent up to twice after about 1s and 3s (`requestRetry.ts`). Other
+  statuses are real answers and are never retried.
+- **Writes are never applied twice.** Every write carries an `Idempotency-Key`.
+  If it ends with no answer, the key is kept, and resending the identical write
+  reuses it. `IdempotentRequests` middleware replays a successful first outcome
+  for 10 minutes and answers `409` while the original is still running. Only
+  2xx outcomes are stored, because a 409 or 422 can change as other users edit.
+- **Timeouts** are 30s for reads and 60s for writes. The timeout includes
+  downloading the body, so shortening it would fail large reads that are
+  progressing slowly but fine.
+
+### Web server settings
+
+Compression is the largest single win for `/api/initial-data`, which is
+repetitive JSON. `backend/public/.htaccess` and `wicars-ui/public/.htaccess`
+(copied into `dist/`) enable it on Apache when `mod_deflate` and `mod_headers`
+are loaded. `ConditionalGetJson` accepts the `-gzip`/`-br` suffix those modules
+add to ETags, so 304 responses keep working with compression on.
+
+For nginx, the equivalent is:
+
+```nginx
+gzip on;
+gzip_types application/json application/javascript text/css image/svg+xml;
+gzip_min_length 1024;
+
+# Hashed Vite assets never change under the same URL.
+location /assets/ {
+    add_header Cache-Control "public, max-age=31536000, immutable";
+}
+
+# index.html points at the current hashes, so always revalidate it.
+location = /index.html {
+    add_header Cache-Control "no-cache";
+}
+```
+
+Check it in production with
+`curl -sI -H "Accept-Encoding: gzip" -H "Authorization: Bearer ..." https://<host>/api/initial-data`
+and look for `Content-Encoding: gzip`.
+
+### Testing on a slow connection
+
+Use Chrome DevTools network throttling ("Slow 4G", "3G", and Offline) and walk
+through sign-in, the dashboard, Schedule Builder, assigning a class, submitting
+and approving. Cut the connection partway through a save, then press Save again:
+the class must exist exactly once.
+
 ## Load testing
 
 Measure p50/p95 latency for `/api/initial-data`, `/api/schedules/semester/{semesterId}`, and the queue submission endpoint with realistic schedule counts. Test at least 10, 25, and 50 concurrent users, and monitor PHP worker CPU, memory, MySQL slow queries, Redis queue depth, and failed jobs.
