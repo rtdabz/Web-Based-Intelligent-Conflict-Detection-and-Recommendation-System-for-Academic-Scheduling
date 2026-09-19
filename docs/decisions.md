@@ -59,6 +59,16 @@ they share `SchedulingPolicy` and the `RuleEngine` constraint definitions. The
 CSP solver may use optimized domain pruning, while the final candidate is still
 validated through the same hard-rule semantics.
 
+## Course configuration owns Split and Hybrid behavior
+
+The scheduling Settings page no longer controls Minor, Major, or Hybrid
+availability. Step 2 of the schedule generator is the source of truth for
+per-course delivery and configuration. Split Session is always available to
+eligible courses; Hybrid Split and Hybrid Laboratory are resolved from the
+course's units, component hours, delivery mode, and selected section. The API
+retains legacy fields for compatibility, but their boolean enable switches are
+ignored when course selections are supplied.
+
 ## Queue expensive generation
 
 Year-level preview generation is asynchronous for production workloads because
@@ -143,3 +153,61 @@ force a mutation. Action steps spotlight the exact control (the button, not
 the card) via precise selectors and zero-visual-change `data-tour` hooks;
 the tooltip tracks moving targets with Floating UI autoUpdate while the
 spotlight follows scroll, resize, and target mutations.
+
+## Course Configure choices travel on the requirement, not new solver inputs
+
+Custom Time Duration and Preferred Room are copied by the requirement builders
+onto each course's `ScheduleRequirement` (`custom_duration`,
+`preferred_room_id`). The requirement is already the per-course contract that
+flows from the controller through `GenerationConfiguration`, the retry ladder
+(which rebuilds requirements from the same section config) and the solver's
+domain cache key, so no new solver parameter or cache part was added.
+`CourseSetupOverrides` owns the request normalisation and refuses a length the
+save would reject, so generation and validation cannot disagree.
+
+`minor_split_duration` was relaxed from "equals the course's units" to "no
+more than the course's units" (in both `MeetingGroupRule` and the kernel's
+`MeetingGroupConstraints`) so a shortened Split Session is saveable.
+`hybrid_component_shape` no longer fixes Integrated Hybrid's lengths
+(2026-09-19, reversing the first version of this decision, at the product
+owner's request): the lecture and laboratory are set per course in Setup
+Courses, so the rule now checks only that the lecture is online and the
+laboratory on-site. The week's total is still capped by `class_duration`.
+The department's Custom Lab Duration becomes the laboratory's default rather
+than a lock; `CustomLabDurationTest` pins the new behaviour. Hybrid Split
+stays exact at `HYBRID_SPLIT_MEETING_MINUTES` per meeting.
+
+Required Day stays the department forced-day rule rather than a per-run
+field, because `MeetingDayRule` enforces it on manual edits too.
+
+## Shared-resource conflicts: one answer from every validator (2026-09-19)
+
+The rule engine, `BatchConflictValidator` and the constraint kernel had drifted
+on the shared resources, so a generated schedule could be refused the moment
+it was edited (see `docs/reports/conflict_detection_and_recommendation_audit.md`).
+They now agree, and `ConflictDetectionParityTest` feeds the same fixtures to
+all three:
+
+- **Online and field classes are not capped.** An online class occupies no
+  room and the field is open ground, so any number of classes, from any
+  department, may share them. The department online/field slot limits,
+  `field_evening_schedule_enabled` and `rooms.max_concurrent_classes` were
+  removed (migration `2026_09_19_000002`), along with the
+  `online_capacity_conflict` and `room_capacity_conflict` rules. The per-section
+  cap on online courses (`section_online_limit`) is a curriculum rule and stays.
+- **A lecture or laboratory room holds one class.** Shared lecture rooms would
+  need all three validators changed together.
+- **The field end time is a setting, not a constant.** Field classes must end by
+  `schedule_settings.field_end_time` (default 17:00), edited by the VPAA beside
+  the operating hours. `SchedulingPolicy::fieldDayEndTime()` clamps it into the
+  operating hours; the kernel reads the value pinned in the snapshot, and the
+  client reads it from `/initial-data` `time_grid`. Set it to the closing time
+  to allow evening field classes.
+- **A standing faculty override covers only the meetings overridden with it.**
+  A clash with a meeting nobody approved is reported again.
+- **Part-time availability windows that touch count as one.**
+
+Selecting a recommendation saves the plan the preview showed
+(`PreviewedPlanStore`, 30 minutes, by `plan_id`) instead of solving again,
+because the solver's wall-clock limit made a second run's "rank N" differ.
+Staleness is still caught at accept by the snapshot fingerprint.
