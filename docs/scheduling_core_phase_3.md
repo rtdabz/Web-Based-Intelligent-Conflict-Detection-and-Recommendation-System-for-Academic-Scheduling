@@ -1,5 +1,11 @@
 # Scheduling Core Phase 3 Constraint Kernel
 
+> **Update 2026-09-19.** `SchedulingConstraintParityReporter` was deleted; only
+> tests used it. Rule-by-rule RuleEngine/kernel agreement, and generator output
+> passing both validators under each setting, are enforced by
+> `tests/Feature/EngineParityMatrixTest.php`. Course classification now lives
+> once in `SchedulingPolicy` (model or snapshot array); the predicates delegate.
+
 ## Decision
 
 Phase 3 introduces one executable, presentation-neutral constraint kernel for

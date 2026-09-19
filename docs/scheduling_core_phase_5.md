@@ -7,8 +7,13 @@
 > caller and no test coverage, and `CspSolver::prunePersistedConflictingCandidates`
 > remains the runtime authority for persisted-conflict pruning. The solver-port
 > half of the phase (`SchedulingSolver`, `CspSchedulingSolverAdapter`,
-> `SolverResultMapper`, `SolverVariableDomain`, `SolverDomainCompilation`,
-> `LegacyCspDomainCompiler`, `SolverDomainParityReporter`) is still in use.
+> `SolverResultMapper`) is still in use. The domain-compilation half
+> (`SolverVariableDomain`, `SolverDomainCompilation`, `LegacyCspDomainCompiler`,
+> `SolverDomainParityReporter`) was deleted on 2026-09-19: the canonical
+> compiler it was built to compare against never existed, so the "legacy"
+> compiler passed its input through unchanged and only tests called it.
+> Generator/validator agreement is now enforced end to end by
+> `tests/Feature/EngineParityMatrixTest.php`.
 > Sections below are kept as a record of the original design; treat any
 > propagation or shadow-mode instruction as historical, not current.
 

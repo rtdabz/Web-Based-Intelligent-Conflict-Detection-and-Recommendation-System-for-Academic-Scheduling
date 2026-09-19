@@ -259,6 +259,16 @@ observable through `legacy_database_loader` metrics and blocked by the rollout
 guard in production. Compatibility-only low-level tests explicitly disable the
 guard in PHPUnit.
 
+**Update 2026-09-19: the database loader is gone.** The snapshot is the
+solver's only data source. A direct caller that passes none gets one captured
+by `SchedulingSnapshotRepository`, exactly as generation captures it, and
+recaptured on every call (metrics marker: `auto_captured_snapshot`). The
+`REQUIRE_SCHEDULING_SNAPSHOT` guard, `legacy_database_loader` marker and
+`usesLegacyDatabaseFallback()` were removed with it. A snapshot whose semester
+or department differs from the section being solved is refused. One live read
+remains: department-wide room-fairness demand (`prepareDepartmentRoomFairness`)
+is not in the snapshot; it only shapes a soft score.
+
 Order 12 removes the obsolete `LegacyCspSolverAdapter` name and binds the
 application port to `CspSchedulingSolverAdapter`. The remaining legacy loader
 branches are retained only inside `CspSolver` for explicit compatibility tests
