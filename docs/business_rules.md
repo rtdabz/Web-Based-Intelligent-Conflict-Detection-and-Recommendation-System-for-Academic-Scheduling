@@ -55,7 +55,7 @@ used as a hard-coded eligibility shortcut.
 The two Hybrid shapes are distinct:
 
 - **Hybrid Split** is a lecture-only course scheduled as two lecture meetings
-  on different days, one Online and one Face-to-Face, each
+  on different days at the same time, one Online and one Face-to-Face, each
   `SchedulingPolicy::HYBRID_SPLIT_MEETING_MINUTES` (1.5 hours) long. A course
   qualifies when those two meetings equal its weekly contact time
   (`units × 60`), which today means three units. The Face-to-Face meeting
@@ -100,8 +100,12 @@ choices ("Use defaults for all" hands it back to the defaults).
   slots per meeting, is skipped for that course, which keeps its own length.
   Field courses and Hybrid Split's fixed meetings are never changed.
 - **Allow Friday and Saturday as Paired Days** (`allow_friday_saturday_split`)
-  lets a Split Session or Hybrid Split also meet Friday + Saturday, tried
-  after MW and TTh.
+  lets a Split Session or Hybrid Split also meet Friday + Saturday as a
+  third regular pair. It ranks with MW and TTh, not in the Saturday fallback
+  tier. Two-day classes, with or without this setting, take the pair whose
+  days the section has used least so far (ties rotate by section and course),
+  so they spread across MW, TTh and Friday + Saturday instead of packing onto
+  one pair. A pair that cannot place still falls through to the others.
 
 Every course starts checked. An unchecked course is left out of the run's
 `course_ids`, field courses included. The API reads an empty list as "all
@@ -134,10 +138,14 @@ meeting. The run returns a recommendation instead. The recommendation may
 offer Hybrid Split when vacant 1.5-hour slots can be used, or Regular Meeting
 with an explicit On-site or Online choice. Both remain suggestions and require
 user action before the configuration changes.
-The Minor/GEC split search must retain every valid start-time pair in the
-configured split-day patterns. Search ranking may try nearby pairs first, but
-candidate truncation must not make Online or a single meeting appear necessary
-while a later physical pair remains valid.
+Both meetings of a Split Session or Hybrid Split use the same start and end
+time (`split_group_same_time`, a hard rule in the generator, the rule engine and
+the kernel). Only Integrated Hybrid's lecture and laboratory keep times of their
+own. Relocating one meeting of such a pair moves its partner to the new time on
+the partner's own day; if the partner cannot take that time, the move is refused.
+The Minor/GEC split search must retain every valid same-time slot in the
+configured split-day patterns. Candidate truncation must not make Online or a
+single meeting appear necessary while a later physical slot remains valid.
 
 Split-course search order is lexicographic:
 

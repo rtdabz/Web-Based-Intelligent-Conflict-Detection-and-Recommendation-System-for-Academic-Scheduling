@@ -7,8 +7,8 @@ tables, forms, and scheduling components rather than duplicate domain logic.
 
 ## Capability authorization
 
-Base roles identify organizational positions (`vpaa`, `dean`, `secretary`,
-`program_head`, and optional `director`). Scheduling actions are granted as
+Base roles identify organizational positions (`vpaa`, `dean`, `secretary`, and
+`program_head`). Scheduling actions are granted as
 generic Spatie permissions such as `schedule.create` and
 `schedule.assign_instructor`; a job title does not imply every scheduling
 action. An account's capabilities come from its role alone; there are no
@@ -31,11 +31,13 @@ assignment uses `courses.teaching_department_id` and, where applicable,
 and adding a migration that re-syncs the stored roles; no department names or
 subject labels are hardcoded into authorization defaults.
 
-Secretary and Program Head navigation, scheduling routes, and action controls
-are derived from these permissions. UI visibility is only a usability layer;
-each API mutation is protected by its exact capability. Secretary, Program
-Head, and Director base roles inherit no scheduling permissions, making the
-per-user scheduling profile authoritative.
+Secretary, Program Head, and Dean navigation, scheduling routes, and action
+controls are derived from these permissions. UI visibility is only a usability
+layer; each API mutation is protected by its exact capability. Secretary and
+Program Head accounts inherit the scheduling workspace permissions defined
+above, while Dean accounts inherit only approval permissions.
+The former Director portal and account role are retired; legacy Director rows
+remain available for administrative cleanup but cannot be created or signed in.
 
 ## Scheduling boundary
 
@@ -135,15 +137,16 @@ orchestrator over `Engine\Rules`, one class per concern, and the kernel
 | Semester and curriculum placement | `CurriculumPlacementRule` | — |
 | Department, room grant, instructor department/program | `DepartmentAssignmentRule` | — |
 | Instructor active, part-time windows | `InstructorAvailabilityRule` | — |
-| Instructor clash | `InstructorConflictRule` | `InstructorConflictConstraints` |
-| Section clash, same online course | `SectionConflictRule` | `SectionConflictConstraints` |
-| Room status, booking, field/online capacity | `RoomAvailabilityRule` | `RoomAvailabilityConstraints` |
+| Room, instructor and section clash; same online course | `OverlapConflict` | `OverlapConflict` |
+| Room status | `RoomAvailabilityRule` | `RoomAvailabilityConstraints` |
 | Room type for the delivery | `RoomTypeRule` | `RoomTypeConstraints` |
 | Slot grid, opening hours, field evening window | `OperatingHoursRule` | `OperatingHoursConstraints` (evening window only) |
 | Allowed days, pattern, forced day | `MeetingDayRule` | `MeetingDayConstraints` |
 | Delivery mode, hybrid, Sunday major, section online limit | `DeliveryModeRule` | `DeliveryModeConstraints` |
 | Weekly contact time per course and section | `ClassDurationRule` | — |
 | Hybrid and Split Session groups | `MeetingGroupRule` | `MeetingGroupConstraints` |
+
+What each class and rule id means is in [scheduling_rules_glossary.md](scheduling_rules_glossary.md).
 
 The first four need live records and are not planned for the kernel. Rule ids
 are unchanged by this layout (`faculty_conflict`, `subject_exists`, ...), since
