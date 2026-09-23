@@ -27,6 +27,13 @@ they never clash on booking.
 | `section_conflict` | A section cannot attend overlapping classes. |
 | `subject_section_time_conflict` | Different online sections taking the same course cannot use overlapping times. |
 
+Generation also *prefers* to keep an online meeting from overlapping another
+section's face-to-face meeting of the same course, because one instructor often
+teaches both. This is a solver preference (`SOFT_MIXED_MODE_COURSE_OVERLAP_PENALTY`),
+not a rule: a dense load may still place the overlap, and manual saves are not
+blocked. Any overlap that remains shows up as `faculty_conflict` once one
+instructor is assigned to both.
+
 ### ReferenceIntegrityRule — the records exist and are usable
 
 | Rule id | Meaning |
@@ -91,6 +98,7 @@ they never clash on booking.
 | `preferred_pattern` | When a pattern (e.g. MWF) is declared, every day belongs to it. |
 | `field_day_constraint` | Non-NSTP field courses run on weekdays only. |
 | `minor_day_constraint` | Minor courses run Monday to Saturday, not Sunday. |
+| `sunday_classes` | Sunday is used only when the department secretary has enabled Sunday classes (off by default). Classes already on Sunday stay when it is turned off. |
 | `forced_course_day` | A course with a Required Day is scheduled on that day. |
 
 ### DeliveryModeRule — the delivery is allowed
@@ -130,7 +138,7 @@ Meanings of each rule id are the same as in Part 1.
 | Constraint family | Rule ids it enforces | Snapshot data it reads |
 |---|---|---|
 | `DeliveryModeConstraints` | `hybrid_mode`, `hybrid_eligibility`, `hybrid_component_type`, `hybrid_component_shape`, `major_sunday_mode_constraint` | course, department settings |
-| `MeetingDayConstraints` | `preferred_pattern`, `field_day_constraint`, `minor_day_constraint`, `forced_course_day` | course, required day |
+| `MeetingDayConstraints` | `preferred_pattern`, `field_day_constraint`, `minor_day_constraint`, `sunday_classes`, `forced_course_day` | course, required day, department settings |
 | `OperatingHoursConstraints` | `slot_grid`, `operating_hours`, `field_evening_window` | opening, closing and field end time |
 | `RoomTypeConstraints` | `room_type_match` | course, room |
 | `RoomAvailabilityConstraints` | `room_availability`, `room_department_alignment` | rooms and their grant windows |
