@@ -33,6 +33,21 @@ function Start-WicarsProcess {
     return Start-Process @options
 }
 
+# The queue worker and Reverb start hidden, so closing this window leaves them
+# running. A worker left from an earlier start keeps the PHP code it loaded and
+# still takes generation jobs, so backend changes would silently not apply.
+# Stop every WICARS backend process from earlier starts before starting fresh.
+$staleProcesses = Get-CimInstance Win32_Process -Filter "Name = 'php.exe'" |
+    Where-Object {
+        $_.CommandLine -and
+        $_.CommandLine.Contains($backendRoot) -and
+        $_.CommandLine -match 'queue:work|reverb:start|artisan"?\s+serve|server\.php'
+    }
+foreach ($process in $staleProcesses) {
+    Write-Host "Stopping earlier WICARS process $($process.ProcessId)"
+    Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
+}
+
 $backendServer = Start-WicarsProcess `
     -FilePath $php `
     -ArgumentList @((Join-Path $backendRoot 'artisan'), 'serve') `
