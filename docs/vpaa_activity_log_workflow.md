@@ -38,13 +38,16 @@ flowchart TD
 
 An event is recorded only after the related operation succeeds. The write should occur in the same database transaction as the business change wherever possible; a failed transaction must not leave a misleading success log.
 
-| Event area | Events to expose | Actor and target |
+| Event category | Covers / Events to expose | Actor and target |
 | --- | --- | --- |
-| Authentication | `login_succeeded`, `logout`, `password_reset`, `google_linked`, `google_unlinked` | Actor user; optionally the subject user, IP address, and user agent |
-| User management | `user_created`, `user_updated`, `user_archived` | VPAA actor; managed account as subject |
-| Schedule recommendations | `recommendation_generated`, `recommendation_selected`, `recommendation_reviewed`, `recommendation_accepted`, `recommendation_rejected`, `recommendation_auto_applied` | Scheduling actor; recommendation, term, section, and department |
-| Schedule workflow | `schedule_submitted`, `schedule_approved_by_dean`, `schedule_returned_by_dean`, `schedule_approved_by_vpaa`, `schedule_returned_by_vpaa`, `schedule_withdrawn` | Actor; department, term, affected sections, count, and rejection reason where applicable |
-| Faculty assignment | `instructor_assigned`, `instructor_assignment_released` | Actor; schedule/section/course, previous and new faculty IDs, and reason |
+| 1. Account & Access | `login_succeeded` (Login), `logout` (Logout), `login_failed` (Failed Login), `password_reset`, `user_created`, `user_updated`, `user_deactivated`, `user_deleted` | Actor user; subject user, IP address, user agent |
+| 2. Institutional Setup | `department_created`, `department_updated`, `program_created`, `program_updated`, `room_created`, `room_updated`, `instructor_created`, `instructor_updated`, `designation_updated` | Administrative actor; department, program, room, instructor, designation IDs |
+| 3. Academic Setup | `curriculum_created`, `curriculum_updated`, `course_created`, `course_updated`, `section_created`, `section_updated`, `semester_updated`, `settings_updated` | Academic actor; curriculum, course, section, semester IDs |
+| 4. Scheduling | `schedule_created`, `schedule_updated`, `schedule_deleted`, `schedule_batch_deleted`, `schedule_batch_status_updated`, `schedule_plan_committed`, `conflict_detected`, `conflict_reviewed`, `conflict_resolved`, `recommendation_generated`, `schedule_auto_generated`, `conflict_recommendation_viewed`, `recommendation_reviewed`, `recommendation_accepted`, `recommendation_applied`, `recommendation_rejected`, `schedule_override`, `max_units_overridden`, `conflict_overridden` | Scheduling actor; department, term, section, schedule IDs, conflict ID |
+| 5. Approval | `schedule_submitted`, `schedule_reviewed`, `schedule_returned`, `schedule_returned_by_dean`, `schedule_returned_by_vpaa`, `schedule_approved`, `schedule_approved_by_dean`, `schedule_approved_by_vpaa`, `schedule_rejected`, `schedule_unlocked`, `schedule_withdrawn` | Dean / VPAA / Scheduling actor; department, term, count, rejection reason |
+| 6. Instructor Assignment | `instructor_assigned`, `instructor_reassigned`, `cross_department_assigned`, `pro_bono_overridden`, `instructor_assignment_released` | Scheduling actor; instructor, section, department IDs |
+| 7. Room Request | `room_requested`, `room_request_approved`, `room_request_rejected` | Requesting actor; room, section, schedule IDs |
+| 8. Reports | `schedule_report_generated`, `conflict_report_generated`, `report_downloaded`, `report_printed` | Requesting actor; department, program, report type |
 
 The existing `metadata` JSON field should hold contextual values such as counts, IDs, recommendation rank/score, rejection reason, withdrawal stage, and authentication method. Passwords, access tokens, and other secrets must never be stored.
 
