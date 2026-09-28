@@ -198,7 +198,7 @@ all three:
 - **A lecture or laboratory room holds one class.** Shared lecture rooms would
   need all three validators changed together.
 - **The field end time is a setting, not a constant.** Field classes must end by
-  `schedule_settings.field_end_time` (default 17:00), edited by the VPAA beside
+  `institution_settings.field_end_time` (default 17:00), edited by the VPAA beside
   the operating hours. `SchedulingPolicy::fieldDayEndTime()` clamps it into the
   operating hours; the kernel reads the value pinned in the snapshot, and the
   client reads it from `/initial-data` `time_grid`. Set it to the closing time

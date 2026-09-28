@@ -116,7 +116,7 @@ unchecked.
 
 A course is a field course only when the department makes it one: its
 record requires the field (`room_type_required = field`), or its code is on
-the department's field list (`field_course_settings`). Its name never does:
+the department's field list (`department_course_rules.is_field`). Its name never does:
 NSTP, ROTC and CWTS used to be field by keyword, with no way to turn it off.
 
 In Setup Courses the list follows the Preferred Room. Picking a field room
