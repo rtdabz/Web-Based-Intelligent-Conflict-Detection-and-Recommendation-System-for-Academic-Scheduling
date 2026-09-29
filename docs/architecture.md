@@ -58,7 +58,6 @@ controller orchestration and the refactoring boundary:
   plan persistence inside one transaction.
 - `YearLevelScheduleGenerationService` coordinates year-level generation,
   retries, diagnostics, and aggregate metrics through its compatibility path.
-- `SplitScheduleService` handles focused split-session recommendations.
 - `ScheduleGenerationPreflightService` checks feasibility before expensive searches.
 
 ## Current runtime adoption
