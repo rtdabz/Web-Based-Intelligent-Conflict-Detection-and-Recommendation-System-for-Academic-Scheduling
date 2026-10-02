@@ -220,7 +220,6 @@ Do not use bulk query-builder writes for schedules unless intentionally handling
 ### Scheduling Configuration
 
 - `institution_settings` is the single global settings row: the signatory (president name and title) and the operating hours (opening time, closing time, field end time, slot interval). The hours lived in `schedule_settings` until 2026-09-26.
-- `timeslot_override` is a historical singular table name for duration-specific starts.
 - `department_course_rules` holds a department's per-course rules, one row per (department, course, section): Required Day (`forced_day`) and Field Course (`is_field`) on the course-wide row (`section_id` null), Consecutive Days (`consecutive_day_count`, `preferred_start_day`, `meeting_days`) course-wide or per section. Write through `DepartmentCourseRules`, which clears one rule without touching the others and drops rows left empty. It replaced `department_forced_course_days`, `course_consecutive_day_rules` and `field_course_settings` on 2026-09-26; field settings now point at a course id rather than a course code, so a renamed code keeps its setting.
 - Department scheduling overrides and resource-slot limits are columns on `departments`, not separate policy tables.
 
@@ -331,7 +330,6 @@ Before a production migration:
 ## Known Schema Exceptions
 
 - The canonical curriculum table is singular: `curriculum`.
-- The timeslot override table is singular: `timeslot_override`.
 - Several models use plural class names: `Departments`, `Rooms`, and `Sections`.
 - Some workflow invariants, including one active semester and one active curriculum per scope, are enforced by application workflows rather than database constraints.
 - Schedule status evolution contains MySQL-specific enum SQL; portability must be considered when adding statuses.
