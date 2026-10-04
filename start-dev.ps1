@@ -50,7 +50,7 @@ foreach ($process in $staleProcesses) {
 
 $backendServer = Start-WicarsProcess `
     -FilePath $php `
-    -ArgumentList @((Join-Path $backendRoot 'artisan'), 'serve') `
+    -ArgumentList @((Join-Path $backendRoot 'artisan'), 'serve', '--host=127.0.0.1', '--port=8000') `
     -WorkingDirectory $backendRoot
 
 $queueWorker = Start-WicarsProcess `
