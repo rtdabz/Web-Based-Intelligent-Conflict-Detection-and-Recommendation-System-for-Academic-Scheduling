@@ -69,10 +69,12 @@ The two Hybrid shapes are distinct:
   days: an Online lecture and a Face-to-Face laboratory. Each length is the
   user's to set in the course's Configure panel. It starts at the course's
   own: one hour per lecture unit, and three hours per laboratory unit or the
-  department's Custom Lab Duration when one is set. Together the two may not
-  exceed the course's weekly ceiling (`class_duration`); only their delivery
-  is fixed. The two are never merged into one block, even when a meeting
-  pattern is supplied.
+  department's Custom Lab Duration when one is set. Each component must fit
+  the operating-day ceiling on the half-hour grid. `ClassDurationRule` and
+  the constraint kernel count each Integrated component separately; the
+  lecture and laboratory are not capped by a combined unit-derived total.
+  Their delivery is fixed. The two are never merged into one block, even when
+  a meeting pattern is supplied.
 
 Integrated is always lecture + laboratory as two sessions; the course's
 delivery decides the lecture:
@@ -140,8 +142,12 @@ with an explicit On-site or Online choice. Both remain suggestions and require
 user action before the configuration changes.
 Both meetings of a Split Session or Hybrid Split use the same start and end
 time (`split_group_same_time`, a hard rule in the generator, the rule engine and
-the kernel). Only Integrated Hybrid's lecture and laboratory keep times of their
-own. Relocating one meeting of such a pair moves its partner to the new time on
+the kernel). Integrated On-site and Integrated Hybrid lecture/laboratory
+groups retain their own component times and durations when represented as
+linked or Hybrid component groups. An explicit balanced meeting-pattern marker
+still invokes its existing same-time group rule; interpretation must preserve
+that marker rather than override save validation. Relocating one meeting of a
+Split Session or Hybrid Split pair moves its partner to the new time on
 the partner's own day; if the partner cannot take that time, the move is refused.
 The Minor/GEC split search must retain every valid same-time slot in the
 configured split-day patterns. Candidate truncation must not make Online or a
@@ -247,3 +253,118 @@ explicit Hybrid selection preserves the online lecture plus physical laboratory
 configuration. All online candidates remain subject to the department's
 concurrent online-meeting limit, including assignments already chosen earlier
 in the same year-level generation.
+
+
+## Applying generation recommendations
+
+Generation advice changes configuration only after explicit selection. Sync and
+queued preview requests apply the same selected operations on the server and
+regenerate with the existing eligibility, preflight and requirement rules.
+Selection does not save schedules or department/course settings. Automatic
+retry strategies continue to change only ordering or search seeds, not the user's
+configured patterns, meeting shapes, delivery modes or preferred days.
+
+The supported existing operations set/clear a Split pattern, turn off an
+Integrated split or a balanced Split, enable/set/disable Hybrid Split, turn off
+all Integrated splits in one section, set/clear a delivery-mode pin, enable
+Friday/Saturday pairs, or add a preferred day. Turning balanced Split off clears
+its pattern and Hybrid selection. Enabling Hybrid Split clears a forced delivery
+pin; disabling it keeps the two balanced meetings and pins them On-site.
+Selecting Online removes the Hybrid marker while retaining the configured
+balanced meeting shape. Other course settings stay in place.
+
+An explicit batch rejects foreign targets, unsupported values, contradictory
+changes and stale course eligibility before dispatch. Repeated identical
+operations apply once. A batch that changes nothing must be refreshed.
+Year-level preferred-day and Friday/Saturday changes include every section in
+the run, so the global UI preview and server scope agree. Custom Split patterns
+require two different supported days.
+
+Unsupported corrections such as removing a course/configuration reference or
+clearing a Required Day are guidance for the existing configuration workflow.
+Generated single-meeting fallback metadata is a report, not an Apply operation.
+Supported suggestions are still **requires regeneration**: room-capacity
+arithmetic, available physical intervals and an incomplete search do not verify
+a complete year-level timetable. No new recommendation alternatives or timetable
+probes are introduced by this phase. Saving a regenerated draft still requires
+fresh validation through the existing save/batch boundary.
+
+
+## Instructor selection after recommendation retirement
+
+Ranked instructor suggestions and generated conflict reassignment options are
+retired. Users choose instructors through the existing manual selection and
+assignment workflows, including permitted manual conflict reassignment. Teaching
+department/program eligibility, approval-stage restrictions, part-time
+availability, overlap refusal and projected unit ceilings still apply to single,
+bulk and linked-group saves. The old override flag never permits a conflicting
+assignment. Instructor-only changes retain their current validation scope and do
+not acquire placement checks unrelated to the assignment.
+
+Conflict placement suggestions keep the assigned instructor and validate every
+affected kept or moved meeting. Applying a suggestion revalidates current saved
+state atomically; its preview does not authorize saving. A bounded search with no
+suggestion means manual review is needed, not that every possible fix was ruled
+out. Faculty records, teaching history and load accounting remain available.
+
+
+## Explicit session enhancements (recommendation integration Phase 6)
+
+Manual Placement, Draft Review and Generate share the same enhancement policy
+and complete-group placement checks. A Regular lecture-only class can be offered
+two equal, matching-time Split meetings when no full-length placement was found.
+Its selected duration is retained, must split evenly on the half-hour grid, and
+must fit the course contact-hour ceiling. On-site stays on-site; Regular Online
+stays online and displays **Online (All)**. These options address fragmented
+time, not an aggregate physical room-time deficit.
+
+An eligible major's Integrated On-site group can explicitly change its lecture
+to online while retaining an on-site laboratory and both component durations.
+The option is labelled **Integrated Hybrid** and explains the delivery change.
+It is offered only if the original on-site group has no placement and a complete
+hybrid group passes validation. An unavailable laboratory cannot be solved by
+moving the lecture online. This explicit choice changes the selected delivery;
+no retry or recommendation lookup clears that choice automatically.
+
+Field courses, Consecutive Days runs and already-split classes do not acquire
+these reshapes. Required Days, permitted days, fixed patterns, operating hours,
+room eligibility, section/instructor occupancy and concurrent same-course online
+limits still apply. A search with no result is bounded evidence, not proof that
+every possible timetable is impossible.
+
+Generate's balanced-Split enhancement probe and the CSP solver use the same
+day-pair policy: prefer the eligible MW/TTh pairs and explicitly enabled
+Friday/Saturday pair. If explicit Preferred Days exclude all those pairs, try
+other permitted spaced pairs before adjacent pairs. Sunday still requires the
+department setting, and every proposed group must pass the existing constraints.
+When a Manual session-alternative check returns no options for a class with a
+Required Day, the UI explains that two-day alternatives need different days.
+It does not clear the Required Day or treat a failed request as an empty result.
+
+Manual users request session alternatives explicitly and stage one complete
+option before using the existing save action. Draft Review replaces the affected
+course rows and rechecks the draft. Generate applies one selected enhancement
+and regenerates; its group witness is not a verified year-level timetable.
+`enable_balanced_split` preserves delivery and duration settings;
+`set_integrated_hybrid` explicitly changes only the target's Integrated delivery.
+Both operations are excluded from combined Apply all requests until a combined
+timetable probe exists. The UI and server reject mixing one with another
+adjustment; existing legacy combination checks remain. Recommendations never
+write schedules, instructor assignments or per-run rules.
+
+## Recommendation selection and compatibility
+
+Manual Best Match order, meeting pairing and complete-group feasibility come from
+the shared backend placement provider. Frontend day/room browsing filters do not
+prove a placement valid. Generate uses the shared policy's versioned selection
+metadata to prioritize untried options before failed attempts, then by impact;
+ties retain provider order. Skipping a retry because time expired does not count
+as trying that adjustment. Unsupported operations, invalid adjustment values,
+resolved recommendations and advice without adjustments are not applicable.
+
+Selection metadata describes a recommendation, not authorization or a verified
+year-level timetable. Applying still requires explicit user selection and current
+server validation. The UI additionally refuses operations its preview does not
+understand. Stored results without recognized metadata retain the legacy display
+adapter and the same application safeguards. No adapter automatically changes
+settings, persists rows or restores retired instructor recommendations.

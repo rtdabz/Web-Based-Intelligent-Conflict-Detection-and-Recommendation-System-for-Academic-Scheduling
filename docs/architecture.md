@@ -312,3 +312,170 @@ shared with `GenerateSectionSchedulePlans` stays until the remaining consumer
 contracts are retired. Any future removal of the CSP compatibility loader must
 be preceded by migrating the remaining direct low-level tests to a dedicated
 test fixture that supplies a `SchedulingSnapshot`.
+
+
+## Shared recommendation placement boundary
+
+The recommendation engine migration and final cutover work are recorded in
+[[recommendation_engine_integration_plan]]. Existing authorized endpoints dispatch
+through `Recommendations/RecommendationEngine`; their response adapters and
+application workflows remain in place.
+
+`PlacementRecommendationProvider` owns complete-group Manual/Draft candidate
+construction and the existing draft catalog ranking. `GenerationDraftReviewer`
+retains draft conflict detection. `AvailableSlotFinder` supplies candidate
+intervals; its optional row template carries existing instructor and group facts.
+`PlacementGroupValidator` checks every affected kept/replacement row and the
+complete meeting group with the constraint kernel and `MeetingGroupRule` against
+persisted and tentative occupancy. Manual prepares fixed occupancy and session
+count once per request, then checks every candidate's rows and complete group.
+Manual Best Match ranking and same-time pair selection are server-owned;
+frontend filters and quality notes remain display behavior.
+
+Group-aware manual requests add complete `placement.rows`, `selected_meeting`
+and optional request-local consecutive rules to the existing available-slots
+endpoint. Responses add complete `group_rows`, group candidate counts/truncation,
+Best Matches and pair starts. Each manual request uses one discovery pass; its
+raw slot fields and counts come from that result. The unused `recommendations`
+field remains an empty list for compatibility. Draft Review and explicit service
+callers obtain the shared catalog through `groupOptions`; modal refreshes do not
+build it. Internal manual options describe the actual validated placements.
+Old requests without `placement` retain the raw slot contract. A truncated group
+total is unknown rather than an exact count.
+Generated unplaced entries forward the already captured run rule to draft review;
+recommendation generation does not persist day rules or change settings.
+
+`verified_group` means the affected course group passed its row/group checks;
+it never means a complete timetable was found or permission to persist. Manual
+selection stages the reviewed meetings, Draft replaces the reviewed class, and
+the existing save/batch workflow revalidates fresh state before writing. Generation
+adjustments require regeneration rather than a timetable feasibility claim.
+Explicit session alternatives are described below; final cutover verification and
+remaining baseline check failures are tracked in integration-plan section 21.
+
+Generation's public year-level responses opt into `selection.contract_version: 1`
+through `GenerationRecommendationProvider`. `GenerationRecommendationPolicy`
+provides option priority (untried before failed attempts, then impact), tried-alone
+state and supported/active applicability. The metadata is additive: existing IDs,
+adjustments, option order and response fields remain intact. The UI groups options
+for display and sorts within each group by the server priority. It still refuses
+operations its local preview cannot interpret; the authorized server interpreter
+remains authoritative when applying a selection.
+
+The unused frontend manual ranker has been removed. Manual Best Matches and pair
+starts already come from the placement provider; day/room filters and descriptive
+quality notes remain local. Generation's `legacyPriority` and attempt-label adapter
+remain solely for stored run results or older backend responses without recognized
+selection metadata. Unknown metadata versions use the same compatibility path.
+Removal requires evidence that those queued/persisted/API consumers have drained.
+Preflight issue-to-guidance text and configuration previews are display adapters,
+not independent placement searches or authorization decisions.
+
+
+## Conflict recommendations and instructor recommendation retirement
+
+Conflict endpoints still perform a fresh scan and filter each action by the
+caller's placement/teaching scope and capability before assigning public ranks.
+The engine's `ConflictRecommendationProvider` delegates placement discovery and
+ranking to `ConflictRecommender`. Discovery carries the existing faculty/group
+facts and excludes the complete affected group from persisted occupancy.
+`SameTimePartnerMover::project` is the common preview/write projection for linked
+meeting movement. `PlacementGroupValidator` and `SessionInterpreter` verify all
+kept and moved rows against the snapshot and meeting-group rules. Options include
+`group_rows` and `affected_schedule_ids`; normalized evidence is `verified_group`,
+not complete timetable feasibility. Existing action scores and bounded search
+budgets remain. Conflict recommendations still skip Consecutive Days runs.
+
+Applying a placement keeps the instructor and uses the existing resolver,
+scope lock, transaction, fresh validation, conflict scan, history and audit.
+A booking that appears after preview can invalidate the whole change. Manual
+instructor reassignment uses its existing instructor-only validation, so unrelated
+placement drift does not block it.
+
+Ranked instructor suggestions are retired from the assignment UI and conflict
+recommendations. The instructor source/provider/ranker and frontend API helper
+have no active callers and are removed. The authenticated, capability- and
+teaching-scope-guarded `GET instructor-assignments/{schedule}/recommendations`
+route remains for older clients and returns HTTP 410 with
+`code: instructor_recommendations_retired`, guidance and `options: []`.
+The conflict UI also filters generated instructor candidates from older servers.
+Manual pickers, bulk/linked assignment, clearing, faculty/load/history services
+and all assignment validation remain. Empty conflict suggestions direct users
+to the manual workflow without claiming the timetable is infeasible.
+
+
+## Generation recommendations and selected adjustments
+
+`GenerationRecommendationPolicy` owns the existing configuration recommendation
+factory, capacity-relief options, search suggestions and preferred-day advice.
+`YearLevelGenerationDiagnostics` keeps bottleneck detection and compatibility
+entry points that delegate suggestion construction to that policy.
+`ValidateGenerationConfiguration` retains validation and uses the shared factory.
+`GenerationRecommendationProvider` and `RecommendationResult` preserve the legacy
+payloads while classifying supported adjustments as requiring regeneration.
+No added CSP probe verifies these suggestions as a complete timetable.
+
+`GenerationAdjustmentInterpreter` is the pure server interpreter for the supported
+applicable operations. It checks the entire explicit selection before
+applying changes: authorized section/course scope, supported values, duplicate
+operations and conflicting semantic writes. Year-level day/default operations
+must target every configured section. Unknown, unsupported and fallback-report
+operations remain guidance. A wholly unchanged selection asks the caller to
+refresh rather than claiming an adjustment was applied.
+
+Both year-level preview endpoints reuse `prepareYearLevelConfigs`. The optional
+`selected_adjustments` list is limited to 1,000 operations; it is interpreted
+against the authorized course selection, then checked again with the existing
+selection eligibility, required-day checks, duration/component/room normalizers,
+preflight and requirement builders. The server rebuilds the seed and requirements
+from the adjusted configuration. No-selection callers keep their existing
+responses. Sync retains its whole-year scope, while Queue retains its existing
+optional section subset.
+
+The UI validates and stages the preview against only the run's target sections,
+then merges their previewed changes into its full local configuration. This keeps
+unselected section choices in place. It sends the original target configuration
+plus the selected operations to avoid applying changes twice. Fixed JSON fixtures
+exercise the same expected settings in PHP and TypeScript. Applied operation metadata is
+server-created and travels in the first configuration's `_selected_adjustments`
+key. Existing job properties and constructor remain unchanged, and previously
+serialized jobs without that key keep empty selected-adjustment metadata.
+Queued progress, cancellation, provisional reports and 150/180-second boundaries
+retain their existing owners. Automatic retries still have no configuration
+adjustments. Schedule persistence, locking, history and final validation remain
+in the existing save workflows.
+
+
+### Explicit session enhancement probes (integration Phase 6)
+
+`SessionAlternativePolicy::enhancement` supplies Regular-to-Split (physical or
+fully online) and Integrated On-site-to-Hybrid definitions from existing course
+rules and supplied meeting durations. `PlacementRecommendationProvider` first
+checks the original selected shape, then uses its existing slot construction and
+`PlacementGroupValidator` for the complete alternative. No new conflict-rule or
+persistence layer is introduced.
+
+Manual requests opt in with `placement.session_alternatives`; optional
+`placement.allowed_days` retains local Required Day scope. The existing endpoint
+guard, server-derived identity and exact replacement-ID checks run first. Normal
+modal refreshes retain the single discovery path and empty catalog. The separate
+UI component requests on click, aborts on unmount/context change, and stages rows
+through the existing modal controls and save path.
+
+Draft Review consumes the same group probe. Generation consumes it after a
+failed search using unplaced targets and the partial draft's occupancy. Capacity
+preflight considers only Integrated Hybrid, since an on-site Split saves no
+aggregate room time. Generation probes retain configured paired days, selected
+allowed days, anchored rows and snapshot run rules. At most four eligible targets
+are inspected, under a shared two-second soft deadline clipped to the remaining
+run budget. Checks occur before each discovery call and seed; an in-flight slot
+finder call can finish after the deadline. Timed-out probes return no enhancement.
+There is no recursive year-level generation call or per-candidate CSP solve.
+
+New generation options contain a `group_witness` and remain
+`requires_regeneration`. The two additive adjustment types flow through the
+existing authorized sync/queue configuration preparation and requirement rebuild.
+They require individual application: UI Apply all excludes selections containing
+them, and the server rejects mixed batches before any config application or
+queue dispatch. Whole-timetable verification is still owned by regeneration and
+fresh-state save validation. Phase 5 conflict kept-row semantics are unchanged.

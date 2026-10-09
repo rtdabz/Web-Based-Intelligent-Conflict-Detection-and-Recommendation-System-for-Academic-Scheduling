@@ -14,6 +14,7 @@
 ## Architecture & Decisions
 
 - [[decisions]]
+- [[recommendation_engine_integration_plan]] — Completed shared engine integration, session policy, phase evidence, compatibility boundaries, and verification matrix.
 - [[scheduling_core_phase_0]]
 - [[scheduling_core_phase_1]]
 - [[scheduling_core_phase_2]]

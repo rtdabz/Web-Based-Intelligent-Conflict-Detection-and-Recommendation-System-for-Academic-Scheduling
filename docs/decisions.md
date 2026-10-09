@@ -203,11 +203,58 @@ all three:
   operating hours; the kernel reads the value pinned in the snapshot, and the
   client reads it from `/initial-data` `time_grid`. Set it to the closing time
   to allow evening field classes.
-- **A standing faculty override covers only the meetings overridden with it.**
-  A clash with a meeting nobody approved is reported again.
+- **Historical override behavior:** standing overrides once covered only their
+  recorded meetings. Current assignment routes refuse overlapping assignments;
+  see the instructor recommendation retirement decision below. No override path
+  is restored by that retirement.
 - **Part-time availability windows that touch count as one.**
 
 Selecting a recommendation saves the plan the preview showed
 (`PreviewedPlanStore`, 30 minutes, by `plan_id`) instead of solving again,
 because the solver's wall-clock limit made a second run's "rank N" differ.
 Staleness is still caught at accept by the snapshot fingerprint.
+
+
+## Retire ranked instructor recommendations (2026-10-08)
+
+The user revised recommendation-engine Phase 5 to remove ranked faculty
+suggestions from Instructor Assignment and conflict fixes. Manual instructor
+selection, clearing, bulk/linked assignment and permitted conflict reassignment
+remain supported with existing authorization and hard validation. An overlap is
+refused even if an older client sends an override flag. Teaching history and load
+accounting are shared services and are retained.
+
+External clients of the old suggestion URL cannot be ruled out. Retain its
+existing authentication, capability and teaching-scope guards, then return an
+explicit HTTP 410 retirement response without invoking a recommender. The UI
+stops requesting that URL and ignores instructor candidates from older conflict
+responses during rollout. Remaining conflict placement recommendations share
+complete-group validation and the resolver's linked-meeting projection. No
+routes for assignment/save, schema or persistence workflow are replaced. See
+[[recommendation_engine_integration_plan]] section 19 for deletion and verification
+evidence.
+
+## Recommendation selection cutover with additive compatibility (2026-10-09)
+
+Generation option priority and active/supported applicability now come from the
+shared `GenerationRecommendationPolicy` through the existing engine provider.
+Public year-level consumers opt into additive `selection` metadata version 1;
+legacy provider consumers retain their exact payloads. No new route, storage
+schema, permission or application workflow is introduced. Manual already consumes
+backend-ranked complete groups, so its unused frontend ranker is removed after
+replacement behavior and call sites were verified.
+
+Keep frontend legacy priority/attempt adapters for persisted generation results
+and older responses until those consumers are demonstrably retired. Keep typed
+configuration contracts, diagnostics delegators, raw-slot browsing, preflight
+guidance mapping, guarded `validate-splits`, and the instructor HTTP 410 tombstone.
+They have explicit compatibility owners; an absent repository UI caller is not
+proof that an external API is unused. The Split controller's preview helpers are
+also used by batch saving and must not be deleted as recommendation-only code.
+
+Rollback can disable the year-level service's selection-contract opt-in while
+retaining the UI adapter; no data rollback or queued-result rewrite is necessary.
+Fresh server authorization/validation, individual session-enhancement application
+and existing save/history/transaction boundaries remain required. Integration-plan
+section 21 records verification and the final gate; these decisions do not waive
+unrelated failing repository checks.
