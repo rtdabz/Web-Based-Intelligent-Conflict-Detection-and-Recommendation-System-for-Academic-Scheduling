@@ -70,6 +70,13 @@ This covers the main scheduling relationships. Audit, notification, authenticati
 - References from users, faculty, curriculum, and courses are nullable and normally use `nullOnDelete()`.
 - Uses soft deletes for user-facing archive operations.
 
+Program create/update requires a department with `deleted_at IS NULL`. Program
+updates retain the existing department. Course create/update similarly validates
+non-archived departments and programs, including retained parents on partial
+updates; a retained program must belong to the resulting department. Optional
+programs can be cleared, and converting a course to a minor clears its program.
+Batch course creation validates the department inherited from its curriculum.
+
 ### `users`
 
 - Application accounts with unique usernames and optional unique email addresses.
@@ -116,9 +123,9 @@ See [[business_rules]] for course ownership and teaching-assignment rules.
 - The current table name is singular because `curricula` was renamed by migration.
 - The `Curriculum` model explicitly sets `protected $table = 'curriculum'`.
 - Belongs optionally to a department and program.
-- `code` is unique; status is `draft`, `active`, or `archived`.
-- Model logic demotes another active curriculum for the same department and program scope when a curriculum becomes active.
-- The database does not guarantee the one-active-curriculum rule with a unique constraint; writes must use the established application path.
+- `code` is unique; status is `active`, `deactivated`, or `archived`.
+- Multiple curricula may remain active in the same department/program scope. Activating one does not demote its siblings.
+- Sections explicitly reference their selected curriculum; its pivot placements govern scheduling.
 
 ### `curriculum_course`
 
@@ -142,7 +149,7 @@ See [[business_rules]] for course ownership and teaching-assignment rules.
   legacy rows during migration; new sections must belong to a program owned by
   the same department.
 - Stores section name, year level, semester, and active/inactive status.
-- Uses soft deletes for user-facing archive operations.
+- Deletion permanently removes the section after dependency checks. Sections have no `deleted_at` column and are not listed or restored by the Archive API.
 
 ### `rooms`
 
@@ -165,9 +172,9 @@ See [[business_rules]] for course ownership and teaching-assignment rules.
 - Current MySQL status values include `conditionally_approved` in addition to the original workflow statuses.
 - `schedules.status` is an operational mirror, not the authoritative approval record. Reviewer identities, review timestamps, rejection reasons, overrides, withdrawal state, and revision lineage belong to `schedule_submissions`.
 - Conflict freedom, time ordering, room suitability, teaching eligibility, and most approval transitions are application invariants, not database constraints.
-- Uses soft deletes. The `Schedule` model records create, update, archive, restore, and permanent-delete snapshots in `schedule_histories` through Eloquent events.
+- Uses soft deletes. Workflow history is written explicitly through `ScheduleHistoryRecorder` into version/item records; there is no automatic legacy history observer.
 
-Do not use bulk query-builder writes for schedules unless intentionally handling the history behavior that Eloquent events would otherwise provide. See [[schedule_history_workflow]].
+Do not use bulk query-builder writes for schedules without handling split lifecycle, revision tracking, and any history required by the workflow. See [[schedule_history_workflow]].
 
 ### `schedule_submissions`
 
@@ -263,13 +270,13 @@ Laravel and installed packages also create supporting tables for personal access
 
 ## Delete Behavior Principles
 
-- User-facing deletion of users, departments, programs, rooms, faculty, courses, semesters, sections, schedules, schedule splits, and timeslot overrides is an archive operation implemented with Eloquent soft deletes.
+- User-facing deletion of users, departments, programs, rooms, faculty, courses, semesters, schedules, schedule splits, and timeslot overrides is an archive operation implemented with Eloquent soft deletes.
 - Curricula retain their established business `status = archived` workflow and restore UI rather than using `deleted_at`.
 - The VPAA Archive API and page list soft-deleted domain records and restore them. No ordinary application route permanently deletes archived domain records.
 - Token revocation, Google unlinking, caches, sessions, and replacement/synchronization writes remain immediate deletes because they are security or transient implementation data, not archived domain records.
 - Use cascade when a row has no meaning without its parent, such as curriculum placements, faculty availability, schedule split details, or a department's sections.
 - Use `nullOnDelete()` when the record should survive but the related entity may be removed, such as audit actors, reviewers, faculty assignment, or shared ownership.
-- `schedule_histories.schedule_id` deliberately has no foreign key so deleted schedules remain traceable.
+- History items preserve the original schedule identifier and immutable snapshots independently of the live schedule. The legacy `schedule_histories` table has been retired.
 - Never change delete behavior without checking workflow, audit, reporting, and restoration consequences.
 
 ## Index And Constraint Principles
@@ -331,7 +338,7 @@ Before a production migration:
 
 - The canonical curriculum table is singular: `curriculum`.
 - Several models use plural class names: `Departments`, `Rooms`, and `Sections`.
-- Some workflow invariants, including one active semester and one active curriculum per scope, are enforced by application workflows rather than database constraints.
+- Some workflow invariants, including one active semester, are enforced by application workflows rather than database constraints.
 - Schedule status evolution contains MySQL-specific enum SQL; portability must be considered when adding statuses.
 
 Do not correct these exceptions through isolated renames. Any normalization must be a coordinated migration across models, queries, APIs, tests, and frontend consumers.

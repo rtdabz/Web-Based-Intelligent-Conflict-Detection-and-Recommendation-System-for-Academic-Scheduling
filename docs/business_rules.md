@@ -1,5 +1,53 @@
 # Business Rules
 
+## Parent archiving, room changes, and timetable restoration
+
+Authoring must select non-archived parent records where the parent supports soft
+deletion. Curriculum ownership may remain null for existing shared workflows.
+Departments and programs cannot be archived while live operational dependencies
+remain; archive responses name the blocking relations. Archived records alone
+do not block parent archiving.
+
+Room structural updates, including the separate department-assignment route,
+validate the proposed room against affected timetable entries within the
+scheduling lock and transaction. Incompatible room type, lecture-use policy, or
+access changes require relocating classes first. Resolve program allocations
+and current pending/approved room requests before changing room ownership.
+Classes from past semesters do not prevent marking a room unavailable.
+
+Schedule restoration validates current scheduling rules and overlap conflicts
+under the semester lock. Required linked meeting groups restore as a unit;
+failure rolls back restored rows and audit records. Restoring split metadata
+alone also requires an editable parent schedule and valid resulting meetings.
+
+## Structural scheduling integrity
+
+Section structural edits validate the complete resulting identity, including
+retained fields. Existing classes must remain compatible with the department,
+program, semester, curriculum, and curriculum course placement. Incompatible
+changes require clearing the affected classes first; name changes and valid
+unscheduled structural edits remain supported.
+
+Replacing a curriculum course or moving its year/semester placement uses the
+same scheduled-cohort dependency guard as direct removal. Batch attachment
+checks every changed placement before writing; unchanged placements are allowed.
+
+Split metadata is part of the timetable. Split writes require writable, live
+parents in a plotting-editable stage, including the original parent when moving
+a split. They use the scheduling scope lock, transactional rule/group validation,
+history and revision recording, audit entries, and payload cache invalidation.
+Required linked-meeting metadata cannot be removed independently.
+
+## Bulk section curriculum assignment
+
+Bulk curriculum assignment follows the ordinary section structural-edit lock:
+a section with locked schedules cannot change curriculum. The operation checks
+fresh section records and existing schedule rows inside a transaction before
+writing any assignment; one blocked change rejects the entire batch. Assigning
+the section's current curriculum is a no-op and remains allowed. Department,
+program, semester, year-level, and explicit section selection still determine
+which sections are targeted.
+
 ## Course teaching assignment
 
 **Which college teaches a course.** A course is *owned* by the college whose
@@ -308,6 +356,15 @@ suggestion means manual review is needed, not that every possible fix was ruled
 out. Faculty records, teaching history and load accounting remain available.
 
 
+## Manual placement room validation and save status
+
+Manual placement checks physical-room selections only for active on-site
+meetings. A second meeting participates when a two-day pattern is selected and
+its duration is positive; single meetings and consecutive runs ignore retained
+second-meeting fields. Room TBA remains restricted to laboratory meetings.
+The modal must not report readiness while a save-validation error is present.
+Save errors remain retryable, and placement-quality preferences do not block saving.
+
 ## Explicit session enhancements (recommendation integration Phase 6)
 
 Manual Placement, Draft Review and Generate share the same enhancement policy
@@ -368,3 +425,5 @@ server validation. The UI additionally refuses operations its preview does not
 understand. Stored results without recognized metadata retain the legacy display
 adapter and the same application safeguards. No adapter automatically changes
 settings, persists rows or restores retired instructor recommendations.
+
+Restore validation also covers retained room home-program allocations and course teaching-department, teaching-program, and delegated-source program references. Restore those archived parents first; restoring a child must not silently discard its assignments.

@@ -31,6 +31,12 @@ assignment uses `courses.teaching_department_id` and, where applicable,
 and adding a migration that re-syncs the stored roles; no department names or
 subject labels are hardcoded into authorization defaults.
 
+Schedule detail, semester/section lists, and split reads share
+`ScheduleAuthorizationService::scopeReadableSchedules`: owning or delegated
+teaching department, existing Program Head/shared-room scope, and VPAA status
+visibility. Split visibility follows its parent schedule. Alternate section
+lists apply department/program scope, and their cache keys include that scope.
+
 Secretary, Program Head, and Dean navigation, scheduling routes, and action
 controls are derived from these permissions. UI visibility is only a usability
 layer; each API mutation is protected by its exact capability. Secretary and
@@ -97,10 +103,13 @@ authority to edit or delete the owning department's timetable. Existing-row
 updates must hydrate identity from the database and ignore client attempts to
 change ownership for authorization purposes.
 
-Curriculum records and their course placements are institution-level academic
-records owned by the VPAA. The Secretary, Dean, and Program Head portals may
-read and print curriculum data, but all curriculum mutations are restricted by
-the API role middleware to `vpaa`.
+Curriculum authoring uses `curriculum.manage`: Secretaries author within their
+department, and Program Heads author only records owned by their assigned
+program. Department-wide curricula remain readable by Program Heads. VPAA and
+Dean defaults provide review access, not curriculum authoring. Frontend list,
+detail, and restore controls mirror record scope; API authorization remains
+authoritative. Multiple curricula may be active concurrently; sections select
+the curriculum governing their course placements.
 
 ## Refactoring boundary
 
@@ -352,6 +361,16 @@ the existing save/batch workflow revalidates fresh state before writing. Generat
 adjustments require regeneration rather than a timetable feasibility claim.
 Explicit session alternatives are described below; final cutover verification and
 remaining baseline check failures are tracked in integration-plan section 21.
+
+The Manual Placement and Edit Schedule dialogs are one component (`DropModal`,
+keyed by `isRescheduling`) and differ only in title and final action (Place on
+Timetable or Save Changes). Only while the form has a conflict, and only for
+users with `schedule.generate`, it requests available slots for the current form
+state (debounced, stale requests aborted) and shows a **View Alternatives**
+button with the placement count (`N+` when truncated). A valid placement shows
+no button and sends no request. The list opens in a separate dialog; choosing an
+option only fills in the form. The client conflict check and the batch save
+still revalidate before anything is written.
 
 Generation's public year-level responses opt into `selection.contract_version: 1`
 through `GenerationRecommendationProvider`. `GenerationRecommendationPolicy`

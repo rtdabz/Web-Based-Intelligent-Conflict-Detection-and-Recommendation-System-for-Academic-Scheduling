@@ -62,6 +62,7 @@ See [[architecture]] and [[business_rules]] for ownership rules.
 
 - Controllers coordinate HTTP concerns: authorization, validated input, service calls, transactions, and response construction.
 - Put reusable validation in Form Request classes under `backend/app/Http/Requests/`.
+- Course create, update, and curriculum batch-create requests share `CourseRequest::courseRules()` and code normalization. Component bounds come from `SchedulingPolicy`; code/name lengths follow the 255-character schema. Batch placement keeps numeric year/semester values, while single-course requests keep their existing enum values. Batch request validation completes before writes; accepted batches retain per-row operation results.
 - Put scheduling and cross-controller domain logic in `backend/app/Services/`, with scheduling-specific logic under `backend/app/Services/Scheduling/`.
 - Prefer dependency injection over constructing services inside methods.
 - Use explicit return and parameter types in new or substantially modified service code where Laravel contracts allow them.
@@ -75,6 +76,7 @@ See [[architecture]] and [[business_rules]] for ownership rules.
 - Validation failures should use Laravel's normal `422` response with an `errors` object unless an endpoint has a documented exception.
 - Authentication and authorization failures use clear JSON messages and `401` or `403` status codes.
 - Do not expose stack traces, SQL, credentials, or internal exception details.
+- Curriculum batch course creation returns explicit messages for archived duplicates and placement conflicts. Unexpected row failures are rolled back and reported through Laravel's exception handler; responses use a generic retry/contact-administrator message and retain per-row partial success.
 
 ### Eloquent Models
 
@@ -82,12 +84,13 @@ See [[architecture]] and [[business_rules]] for ownership rules.
 - Declare boolean, JSON, date, and numeric casts when callers depend on typed values.
 - Define relationships on models instead of repeating joins when the relationship is part of the domain model.
 - Respect historical naming exceptions such as `Curriculum` using the singular `curriculum` table and plural model names including `Departments`, `Rooms`, and `Sections`.
-- Inspect model lifecycle hooks before bypassing Eloquent. `Schedule` writes schedule history from model events, and `Curriculum` enforces active-curriculum behavior during saving.
+- Inspect model lifecycle hooks before bypassing Eloquent. `Schedule` persists split metadata through model events; workflow history uses the explicit `ScheduleHistoryRecorder`. `Curriculum` synchronizes course placement defaults after status/school-year updates; it does not demote other active curricula.
 - Use query-builder or bulk updates only after confirming which Eloquent events, casts, and audit records would be skipped.
 
 ### Transactions, Jobs, And Side Effects
 
 - Wrap multi-table writes in `DB::transaction()` when partial success would leave an invalid schedule, curriculum, assignment, approval, or audit state.
+- Single schedule creation and grouped deletion use the existing semester scheduling lock and transaction; validate fresh state inside that boundary. Curriculum duplication commits the copied parent and placements together. Required audit/revision writes belong inside the transaction; notifications and cache invalidation follow successful persistence.
 - Keep preview and generation staging isolated from committed schedule data.
 - Long-running generation work belongs in existing jobs and generation services.
 - Queue behavior must remain compatible with the database queue configuration.

@@ -32,13 +32,40 @@ The API uses the versioned `ApiCache` groups for read-heavy lookup payloads.
 Production should use Redis (`CACHE_STORE=redis`); file/database stores remain
 valid for local development and single-node fallback deployments.
 
-`GET /api/initial-data` is cached for 15 seconds using a key scoped by role,
+`GET /api/initial-data` is cached for 300 seconds using a key scoped by role,
 department, program, pagination, and schedule-limit parameters. This endpoint
-contains both reference data and active workflow rows, so the short TTL is
-intentional. Semesters, rooms, departments, sections, courses, and faculty writes
-invalidate the `initial.data` group after persistence. Faculty and course list
+contains both reference data and active workflow rows; successful mutations
+invalidate affected versions immediately, with TTL expiry as a fallback.
+Semesters, rooms, departments, sections, courses, and faculty writes invalidate the `initial.data` group after persistence. Faculty and course list
 endpoints also use scoped five-minute caches, invalidated by their related
 mutations and instructor-assignment changes.
+
+### Related lookup dependencies
+
+Lookup payloads that embed other records use `ApiCache::compositeKey()` while
+retaining their existing department/program/filter scope. Dependency versions
+are read directly; they do not recursively expand other composite keys.
+
+- Section lists depend on department/program, curriculum, and (where embedded)
+  semester versions. Program writes already advance `departments.index`.
+- Faculty lists depend on departments/programs, courses, and sections in addition
+  to their own version, so teaching loads and nested names reflect edits.
+- Course and room lists track their embedded department; course lists also track
+  curriculum selection and placement changes.
+- Curriculum lists track parents, courses, sections, and `initial.data` plus
+  `initial.data.schedules` for scheduled-section counts. The bootstrap version is
+  the existing shared signal for schedule mutations, including archive/restore;
+  this intentionally permits extra curriculum-cache misses on bootstrap writes.
+- Instructor-assignment payloads track the embedded lookup groups and bootstrap
+  schedule versions, including faculty availability and room details.
+
+Availability replacement advances `faculty.index`, `initial.data`, and
+`instructor_assignments.index` (including its live-update topic) after its
+transaction succeeds, including when clearing all windows. Restores advance the
+existing lookup versions, which now also expire dependent composite payloads.
+Split mutations already advance the bootstrap version; warm-cache API tests
+cover split creation, editing, and deletion. Changes to these dependencies must
+be verified by warming the read, performing the API write, and reading again.
 
 ### Narrowing an `initial.data` invalidation
 
@@ -67,7 +94,7 @@ Two rules before narrowing a write path:
 
 Do not cache mutations, notifications, activity logs, generation-run status, or
 solver decisions. Schedule and approval changes must continue to invalidate
-affected groups after the transaction commits; the short bootstrap TTL is a
+affected groups after the transaction commits; the bootstrap TTL is a
 bounded fallback for changes made by another session.
 
 Run `php artisan optimize`, `php artisan config:cache`, `php artisan route:cache`, and `php artisan view:cache` during deployment. Run at least one dedicated queue worker for the `scheduling` queue:

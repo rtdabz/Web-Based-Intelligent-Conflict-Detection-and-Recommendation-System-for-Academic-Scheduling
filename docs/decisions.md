@@ -30,6 +30,12 @@ Schedule cards, hover summaries, and details display the department's uploaded
 logo. Both views resolve departments from their already-loaded directory by ID,
 keeping logo data out of repeated nested schedule API relations. The shared
 department-logo component shows an icon when an upload is absent or fails to load.
+The dean, secretary, and program-head dashboard timelines and the dean schedule
+viewer also resolve logos from the `/initial-data.departments` directory. The
+instructor timetable loads `/departments` alongside its faculty-filtered schedules
+and joins each meeting by its own department ID, including cross-department
+teaching. If that directory request fails, the timetable remains available with
+the shared fallback icon.
 
 ## VPAA settings preview drafts before saving
 
