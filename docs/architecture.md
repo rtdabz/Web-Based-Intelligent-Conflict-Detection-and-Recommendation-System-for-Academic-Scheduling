@@ -5,6 +5,29 @@ are enforced by Laravel Sanctum and Spatie permissions. The client calls the
 API through the shared Axios client; role-specific pages should compose shared
 tables, forms, and scheduling components rather than duplicate domain logic.
 
+## Temporary PDF previews
+
+Client-side PDF builders retain ownership of report layout and contents. The
+shared `pdfPreview.ts` helper uploads those bytes to the temporary PDF API and
+opens a named HTTP response with inline `Content-Disposition`, allowing the
+browser viewer's existing download arrow to use a descriptive filename.
+
+Preview creation/deletion use existing Sanctum, active-account, and
+`schedule.view` checks. Native-viewer GET requests use a signed relative URL
+for one PDF; `ResolvePdfPreview` validates the signature and restores the
+original credential from the encrypted cache entry before the normal
+authentication/authorization middleware runs. The middleware priority entry
+applies only to routes containing this resolver. Original-token revocation,
+expiry, disabled accounts, and removed capabilities continue to deny access.
+
+`TemporaryPdfPreview` encrypts the PDF/credential cache payload, expires access
+after 30 minutes, and retains at most five previews per user under cache locks.
+Modal cleanup/closed-tab polling deletes owned previews; expiry bounds access
+if the parent app closes first. Signed URLs are private, temporary access links;
+they do not certify the client-generated PDF as an approved server record.
+No domain schema or scheduling permission was added. See [[print_download_review]]
+for the endpoint contract, limits, and validation evidence.
+
 ## Capability authorization
 
 Base roles identify organizational positions (`vpaa`, `dean`, `secretary`, and
@@ -65,6 +88,22 @@ controller orchestration and the refactoring boundary:
 - `YearLevelScheduleGenerationService` coordinates year-level generation,
   retries, diagnostics, and aggregate metrics through its compatibility path.
 - `ScheduleGenerationPreflightService` checks feasibility before expensive searches.
+
+## Course-driven scheduling requirements
+
+`ScheduleRequirementBuilderResolver` loads the selected courses and delegates to
+`CourseScheduleRequirementBuilder`, which emits the existing `ScheduleRequirement`
+contract per course/meeting. The department Scheduling Profile, enum, profile
+resolver, and Standard/Laboratory builder split were retired on 2026-10-16.
+Preflight validates curriculum and course eligibility; resource feasibility,
+configuration validation, and the solver retain ownership of room restrictions
+and fallback behavior. Configuration validation recognizes approved borrowed
+rooms through snapshot `grant_windows`; placement still enforces those windows.
+
+No `scheduling_profile` or `department_profile` capability metadata is emitted by
+new responses/snapshots. Old request fields are ignored by validated department
+writes, and old profile metadata in serialized configurations has no effect on
+eligibility. Course requirements and room authorization remain authoritative.
 
 ## Current runtime adoption
 

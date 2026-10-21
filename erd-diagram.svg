@@ -826,7 +826,7 @@
   </g>
     <g class="table table-node" id="tbl_departments" data-table-name="departments" data-table-id="tbl_departments" transform="translate(4734, 4054)">
     <!-- Table Outer Box -->
-    <rect width="410" height="512" rx="6" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="410" height="484" rx="6" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
 
     <!-- Table Header Background -->
     <path d="M 0 6 A 6 6 0 0 1 6 0 L 404 0 A 6 6 0 0 1 410 6 L 410 36 L 0 36 Z" fill="#1e293b"/>
@@ -857,89 +857,84 @@
         <text class="col-name" x="12" y="110" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">department_code</text>
         <text class="col-type" x="398" y="110" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">varchar(255)</text>
       </g>
-      <g class="column-row" id="tbl_departments_scheduling_profile">
+      <g class="column-row" id="tbl_departments_logo">
         <rect x="1" y="120" width="408" height="28" fill="#f8fafc"/>
         
-        <text class="col-name" x="12" y="138" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">scheduling_profile</text>
-        <text class="col-type" x="398" y="138" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">varchar(32)</text>
-      </g>
-      <g class="column-row" id="tbl_departments_logo">
         
-        
-        <text class="col-name" x="12" y="166" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">logo</text>
-        <text class="col-type" x="398" y="166" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">longtext</text>
+        <text class="col-name" x="12" y="138" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">logo</text>
+        <text class="col-type" x="398" y="138" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">longtext</text>
       </g>
       <g class="column-row" id="tbl_departments_lecture_lab_schedule_override_enabled">
-        <rect x="1" y="176" width="408" height="28" fill="#f8fafc"/>
         
-        <text class="col-name" x="12" y="194" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">lecture_lab_schedule_override_enabled</text>
-        <text class="col-type" x="398" y="194" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
+        <text class="col-name" x="12" y="166" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">lecture_lab_schedule_override_enabled</text>
+        <text class="col-type" x="398" y="166" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
       </g>
       <g class="column-row" id="tbl_departments_custom_lab_duration_override_enabled">
+        <rect x="1" y="176" width="408" height="28" fill="#f8fafc"/>
         
         
-        <text class="col-name" x="12" y="222" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">custom_lab_duration_override_enabled</text>
-        <text class="col-type" x="398" y="222" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
+        <text class="col-name" x="12" y="194" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">custom_lab_duration_override_enabled</text>
+        <text class="col-type" x="398" y="194" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
       </g>
       <g class="column-row" id="tbl_departments_custom_lab_duration_minutes">
-        <rect x="1" y="232" width="408" height="28" fill="#f8fafc"/>
         
-        <text class="col-name" x="12" y="250" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">custom_lab_duration_minutes</text>
-        <text class="col-type" x="398" y="250" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">smallint(5)</text>
+        <text class="col-name" x="12" y="222" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">custom_lab_duration_minutes</text>
+        <text class="col-type" x="398" y="222" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">smallint(5)</text>
       </g>
       <g class="column-row" id="tbl_departments_custom_lab_duration_6_hours_enabled">
+        <rect x="1" y="232" width="408" height="28" fill="#f8fafc"/>
         
         
-        <text class="col-name" x="12" y="278" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">custom_lab_duration_6_hours_enabled</text>
-        <text class="col-type" x="398" y="278" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
+        <text class="col-name" x="12" y="250" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">custom_lab_duration_6_hours_enabled</text>
+        <text class="col-type" x="398" y="250" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
       </g>
       <g class="column-row" id="tbl_departments_custom_lab_duration_5_hours_enabled">
-        <rect x="1" y="288" width="408" height="28" fill="#f8fafc"/>
         
-        <text class="col-name" x="12" y="306" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">custom_lab_duration_5_hours_enabled</text>
-        <text class="col-type" x="398" y="306" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
+        <text class="col-name" x="12" y="278" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">custom_lab_duration_5_hours_enabled</text>
+        <text class="col-type" x="398" y="278" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
       </g>
       <g class="column-row" id="tbl_departments_custom_lab_duration_other_enabled">
+        <rect x="1" y="288" width="408" height="28" fill="#f8fafc"/>
         
         
-        <text class="col-name" x="12" y="334" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">custom_lab_duration_other_enabled</text>
-        <text class="col-type" x="398" y="334" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
+        <text class="col-name" x="12" y="306" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">custom_lab_duration_other_enabled</text>
+        <text class="col-type" x="398" y="306" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
       </g>
       <g class="column-row" id="tbl_departments_gec_split_schedule_override_enabled">
-        <rect x="1" y="344" width="408" height="28" fill="#f8fafc"/>
         
-        <text class="col-name" x="12" y="362" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">gec_split_schedule_override_enabled</text>
-        <text class="col-type" x="398" y="362" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
+        <text class="col-name" x="12" y="334" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">gec_split_schedule_override_enabled</text>
+        <text class="col-type" x="398" y="334" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
       </g>
       <g class="column-row" id="tbl_departments_major_lecture_split_schedule_override_enabled">
+        <rect x="1" y="344" width="408" height="28" fill="#f8fafc"/>
         
         
-        <text class="col-name" x="12" y="390" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">major_lecture_split_schedule_override_enabled</text>
-        <text class="col-type" x="398" y="390" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
+        <text class="col-name" x="12" y="362" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">major_lecture_split_schedule_override_enabled</text>
+        <text class="col-type" x="398" y="362" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
       </g>
       <g class="column-row" id="tbl_departments_deleted_at">
-        <rect x="1" y="400" width="408" height="28" fill="#f8fafc"/>
         
-        <text class="col-name" x="12" y="418" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">deleted_at</text>
-        <text class="col-type" x="398" y="418" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">timestamp</text>
+        <text class="col-name" x="12" y="390" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">deleted_at</text>
+        <text class="col-type" x="398" y="390" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">timestamp</text>
       </g>
       <g class="column-row" id="tbl_departments_created_at">
+        <rect x="1" y="400" width="408" height="28" fill="#f8fafc"/>
         
         
-        <text class="col-name" x="12" y="446" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">created_at</text>
-        <text class="col-type" x="398" y="446" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">timestamp</text>
+        <text class="col-name" x="12" y="418" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">created_at</text>
+        <text class="col-type" x="398" y="418" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">timestamp</text>
       </g>
       <g class="column-row" id="tbl_departments_updated_at">
-        <rect x="1" y="456" width="408" height="28" fill="#f8fafc"/>
         
-        <text class="col-name" x="12" y="474" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">updated_at</text>
-        <text class="col-type" x="398" y="474" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">timestamp</text>
+        <text class="col-name" x="12" y="446" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">updated_at</text>
+        <text class="col-type" x="398" y="446" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">timestamp</text>
       </g>
       <g class="column-row" id="tbl_departments_sunday_classes_enabled">
+        <rect x="1" y="456" width="408" height="28" fill="#f8fafc"/>
         
         
-        <text class="col-name" x="12" y="502" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">sunday_classes_enabled</text>
-        <text class="col-type" x="398" y="502" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
+        <text class="col-name" x="12" y="474" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="13" font-weight="400" fill="#1e293b">sunday_classes_enabled</text>
+        <text class="col-type" x="398" y="474" text-anchor="end" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="12" fill="#64748b">tinyint(1)</text>
       </g>
     </g>
   </g>

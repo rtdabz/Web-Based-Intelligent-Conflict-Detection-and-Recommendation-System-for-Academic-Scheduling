@@ -9,11 +9,13 @@
 ## Development
 
 - [[coding_standards]]
+- [[print_download_review]] — Print/download inventory, filename conventions, verification, and prioritized export improvements.
 - [[performance]]
 
 ## Architecture & Decisions
 
 - [[decisions]]
+- [[scheduling_profile_removal_plan]] ? Completed course-driven replacement of the department Scheduling Profile and verification record.
 - [[room_request_implementation_plan]] — Planned phases for Room Request authorization, scheduling integrity, reliable responses, and frontend correctness.
 - [[recommendation_engine_integration_plan]] — Completed shared engine integration, session policy, phase evidence, compatibility boundaries, and verification matrix.
 - [[scheduling_core_phase_0]]

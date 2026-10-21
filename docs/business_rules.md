@@ -91,6 +91,28 @@ The same scope drives the Auto-Assign Instructor wizard — see
 `InitialDataController` — and the two must agree. A course the wizard will not
 offer a department is not a course that department should be delegating.
 
+## Course-driven room requirements
+
+Departments have no Scheduling Profile or specialized-room enable switch.
+`SchedulingPolicy::isLaboratoryCourse` derives laboratory requirements from
+`lab_hours > 0` or `room_type_required = laboratory`. The course's selected
+meeting configuration determines which lecture/laboratory components are built.
+Lab defaults in Setup Courses appear when an included, non-field course needs
+laboratory scheduling; excluding that course hides the controls without erasing
+saved defaults.
+
+Room access still follows ownership, shared-room policy, program allocation,
+and approved borrowing for the semester and time window. A lecture-only major
+may use a laboratory only when the existing course eligibility checks pass and
+the room permits lecture use (`allow_lecture_usage`). This fallback now applies
+regardless of the department's former Standard/Specialized classification.
+Ordinary minor lectures do not gain laboratory access from this removal.
+
+Missing rooms are handled by resource feasibility and the existing fallback
+policies. Year-level generation with no physical rooms can require a room or an
+explicit Online selection. Laboratory Room TBA remains conditional on existing
+policy; a missing lab never changes a lab requirement into an ordinary lecture.
+
 ## Course-driven Split Session and Hybrid delivery
 
 Split Session is always available from **Step 2 - Setup Courses**. The user

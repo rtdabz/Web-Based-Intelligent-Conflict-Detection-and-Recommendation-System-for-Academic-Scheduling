@@ -137,6 +137,14 @@ Place code at the narrowest reusable level. Do not move page-specific logic into
 - Show actionable error messages without exposing internal details.
 - Keep role-specific behavior consistent across navigation, page access, and API authorization.
 
+### Print And Download Filenames
+
+- Build PDF/CSV names with `src/lib/exportFile.ts` using report type and available scope, academic year, semester, curriculum code, or instructor identity. Do not label department-wide output as a single-section export.
+- Use `downloadFile` for local file downloads. PDF print windows use `openPdfPreview` from `src/lib/pdfPreview.ts`; embedded PDFs use `createPdfPreview`. These expose temporary named HTTP responses so users can use the browser's existing PDF download arrow. Do not add a duplicate PDF download toolbar.
+- Dispose temporary HTTP previews when their modal/tab closes. Preserve the signed URL, original-session authentication, active-account/capability checks, ownership checks, encrypted cache storage, bounded cache entries, and expiry. Do not immediately revoke local download object URLs before the browser can consume them.
+- Supply generated PDF filenames through the named response URL and inline `Content-Disposition`. Use `printWithTitle` to suggest a name for HTML Save as PDF and restore the app title after printing; print-dialog names remain browser decisions.
+- See [[print_download_review]] for the reviewed entry points and remaining CSV/export improvements.
+
 ## Testing Standards
 
 ### Backend Tests

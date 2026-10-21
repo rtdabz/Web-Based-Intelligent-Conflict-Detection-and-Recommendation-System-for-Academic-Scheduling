@@ -264,3 +264,23 @@ Fresh server authorization/validation, individual session-enhancement applicatio
 and existing save/history/transaction boundaries remain required. Integration-plan
 section 21 records verification and the final gate; these decisions do not waive
 unrelated failing repository checks.
+
+## Remove department Scheduling Profile (2026-10-16)
+
+Course data and per-course meeting configuration determine laboratory behavior.
+The VPAA department toggle and classification were removed because they could
+contradict valid curriculum data and prevent laboratory scheduling. All
+requirements use `CourseScheduleRequirementBuilder`; the database profile column
+is removed by a forward migration. Existing course defaults are preserved.
+
+The existing lecture-only-major / `allow_lecture_usage` rule now controls lecture
+fallback to labs across all departments, including former Standard departments.
+Room ownership, approved borrowing windows, program restrictions, physical-room
+conflicts, and Room TBA eligibility still apply. Department identity or merely
+owning a lab does not grant a course laboratory eligibility.
+
+This explicitly retires profile request/response fields. Stale department input
+is ignored, while old serialized profile metadata cannot gate new execution.
+Deploy the API, frontend, and migration together, restart generation workers,
+and invalidate department/initial-data lookup caches. No compatibility profile
+or automatic department-level toggle replaces the removed setting.

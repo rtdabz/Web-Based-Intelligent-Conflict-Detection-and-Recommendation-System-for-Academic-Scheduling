@@ -58,7 +58,8 @@ This covers the main scheduling relationships. Audit, notification, authenticati
 - Institutional scheduling and ownership boundary.
 - `department_name` and `department_code` are unique.
 - Uses soft deletes.
-- Later migrations add department-specific scheduling profiles, overrides, resource limits, logos, and online/field scheduling options.
+- Stores department scheduling defaults, overrides, logos, and room-sharing options.
+- Migration `2026_10_16_100001_remove_department_scheduling_profile` removes `scheduling_profile`; course data determines laboratory requirements. Other defaults and existing schedules are preserved. Rolling back restores the column with `standard`, not the retired per-department values.
 - Department deletion has mixed effects: owned operational records may cascade, while shared or historical references may become null.
 
 ### `programs`
